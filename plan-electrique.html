@@ -591,9 +591,13 @@ function renderBP(){
   h+='<div class="wb"><h4>Gaines & Câbles</h4>';
   if(wm!==null){
     const tot=(wm*mg).toFixed(1);h+=`<div class="wv">${tot} m</div><div class="ws">Total gaines (+${S.cfg.margin}% marge) / ${wm.toFixed(1)}m tracés</div><div class="wbk">`;
-    if((cnt.luminaire+cnt.applique+cnt.inter_simple+cnt.inter_double)>0)h+=`<div><span>Fil 1.5mm² (éclairage)</span>~${(wm*mg*0.3).toFixed(1)}m</div>`;
-    if((cnt.prise16+cnt.prise_double+cnt.prise20)>0)h+=`<div><span>Fil 2.5mm² (prises)</span>~${(wm*mg*0.6).toFixed(1)}m</div>`;
-    h+=`<div style="font-size:9px;color:var(--txt2);margin-top:3px">Estimation proportionnelle</div></div>`;
+    const n15=(cnt.luminaire||0)+(cnt.applique||0)+(cnt.inter_simple||0)+(cnt.inter_double||0)+(cnt.volet_roulant||0)+(cnt.volet_battant||0)+(cnt.inter_volet||0);
+    const n25=(cnt.prise16||0)+(cnt.prise_double||0)+(cnt.prise20||0);
+    const nTot=n15+n25||1;
+    const m15=wm*mg*n15/nTot;const m25=wm*mg*n25/nTot;
+    if(n15>0)h+=`<div><span>Fil 1.5mm² (éclairage &amp; volets)</span>~${m15.toFixed(1)}m</div>`;
+    if(n25>0)h+=`<div><span>Fil 2.5mm² (prises)</span>~${m25.toFixed(1)}m</div>`;
+    h+=`<div style="font-size:9px;color:var(--txt2);margin-top:3px">Répartition proportionnelle au nombre d'éléments</div></div>`;
   } else {
     h+=`<div class="wv" style="color:var(--txt2)">— m</div><div class="ws">Définissez l'échelle d'abord</div>`;
   }
@@ -623,9 +627,9 @@ function autoAssign(){
   const lCircs=[];let nL=0;
   elsL.forEach((el,i)=>{if(i%maxL===0){nL++;lCircs.push(mk(`Éclairage-${nL}`,'lumiere',10,'1.5mm²'));}S.assgn[el.id]=S.circs[S.circs.length-1].id;});
   elsI.forEach((el,i)=>{const c=lCircs[Math.min(Math.floor(i*lCircs.length/Math.max(1,elsI.length)),lCircs.length-1)];if(c)S.assgn[el.id]=c.id;});
-  // Volets : 1 moteur par circuit (chaque volet roulant/battant sur son propre circuit)
-  let nV=0;const vCircs=[];
-  elsVR.forEach((el,i)=>{nV++;const c=mk(`Volets-${nV}`,'volet',10,'1.5mm²');vCircs.push(c);S.assgn[el.id]=c.id;});
+  // Volets : max 8 moteurs par circuit 10A / 1.5mm² (même règle que l'éclairage)
+  let nV=0;const vCircs=[];let curCV=null;let cntV=0;
+  elsVR.forEach((el,i)=>{if(!curCV||cntV>=8){nV++;curCV=mk(`Volets-${nV}`,'volet',10,'1.5mm²');vCircs.push(curCV);cntV=0;}S.assgn[el.id]=curCV.id;cntV++;});
   // Interrupteurs volet rattachés au circuit du moteur correspondant (répartition proportionnelle)
   elsIV.forEach((el,i)=>{const c=vCircs[Math.min(Math.floor(i*vCircs.length/Math.max(1,elsIV.length)),vCircs.length-1)];if(c)S.assgn[el.id]=c.id;});
   render();renderCP();
