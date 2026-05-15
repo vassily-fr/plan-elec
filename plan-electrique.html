@@ -81,6 +81,21 @@
 .aname{flex:1;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;}
 .asel{background:var(--surf3);border:1px solid var(--brd);border-radius:4px;color:var(--txt);font-family:'Syne',sans-serif;font-size:10px;padding:2px 4px;cursor:pointer;width:95px;}
 .asel:focus{outline:none;border-color:var(--acc2);}
+/* custom circuit dropdown */
+.cdd{position:relative;display:inline-block;width:110px;}
+.cdd-trg{display:flex;align-items:center;gap:4px;background:var(--surf3);border:1px solid var(--brd);border-radius:4px;color:var(--txt);font-family:'Syne',sans-serif;font-size:10px;padding:2px 5px;cursor:pointer;width:100%;user-select:none;}
+.cdd-trg:focus{outline:none;border-color:var(--acc2);}
+.cdd-trg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.cdd-trg-lbl{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cdd-trg-arr{font-size:8px;color:var(--txt2);flex-shrink:0;}
+.cdd-menu{position:fixed;z-index:9999;background:var(--surf3);border:1px solid var(--brd);border-radius:4px;box-shadow:0 4px 16px rgba(0,0,0,.5);min-width:140px;max-height:180px;overflow-y:auto;display:none;}
+.cdd-menu.open{display:block;}
+.cdd-item{display:flex;align-items:center;gap:5px;padding:4px 8px;font-size:10px;font-family:'Syne',sans-serif;color:var(--txt);cursor:pointer;}
+.cdd-item:hover{background:var(--surf2);}
+.cdd-item.sel{color:var(--acc2);}
+.cdd-item-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.cdf-err{border-color:var(--acc3)!important;background:rgba(255,107,107,.06)!important;}
+.cdf-warn{border-color:var(--orn)!important;}
 .cc{background:var(--surf2);border:1px solid var(--acc3);border-radius:var(--r);padding:10px;margin-top:6px;}
 .cc h4{font-size:11px;font-weight:700;color:var(--acc3);margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;}
 .cc .cd{font-size:11px;color:var(--txt2);line-height:1.9;}
@@ -439,7 +454,7 @@ function setupCtx(){
   document.getElementById('ctxDup').onclick=()=>{if(S.ctxEl)placeEl(S.ctxEl.type,S.ctxEl.x+22,S.ctxEl.y+22);hideCtx();};
   document.getElementById('ctxDel').onclick=()=>{if(S.ctxEl)delEl(S.ctxEl);hideCtx();};
   document.getElementById('ctxX').onclick=hideCtx;
-  document.addEventListener('click',e=>{if(!e.target.closest('#ctx'))hideCtx();});
+  document.addEventListener('click',e=>{if(!e.target.closest('#ctx'))hideCtx();if(!e.target.closest('.cdd'))document.querySelectorAll('.cdd-menu.open').forEach(m=>m.classList.remove('open'));});
 }
 function showCtx(x,y){const m=document.getElementById('ctx');m.style.display='block';m.style.left=x+'px';m.style.top=y+'px';}
 function hideCtx(){document.getElementById('ctx').style.display='none';}
@@ -525,15 +540,27 @@ function renderCP(){
   } else {
     S.circs.forEach(c=>{
       const bc=c.disj<=10?'b10':c.disj<=16?'b16':'b20';
-      const nb=Object.values(S.assgn).filter(id=>id===c.id).length;
-      h+=`<div class="cdf">
+      const cid=String(c.id);
+      const assignedEls=[];
+      S.lvls.forEach(lv=>lv.els.forEach(el=>{if(String(S.assgn[el.id])===cid)assignedEls.push(el);}));
+      const nb=assignedEls.length;
+      let pts=assignedEls.reduce((s,el)=>s+(el.type==='prise_double'?2:1),0);
+      const maxPts=c.type==='prise20'?1:c.type==='lumiere'?S.cfg.maxLum:S.cfg.maxP16;
+      const over=pts>maxPts,atLim=pts===maxPts;
+      const stCls=over?'cdf-err':atLim?'cdf-warn':'';
+      const stHtml=over
+        ?`<span style="color:var(--acc3)">⚠ ${pts}/${maxPts}pts DÉPASSEMENT</span>`
+        :atLim
+        ?`<span style="color:var(--orn)">⚠ ${pts}/${maxPts}pts limite</span>`
+        :`<span style="color:var(--txt2)">${pts}/${maxPts}pts</span>`;
+      h+=`<div class="cdf ${stCls}">
         <div class="cdft">
           <div style="width:10px;height:10px;border-radius:50%;background:${cmap[c.id]||'#888'};flex-shrink:0;"></div>
           <input class="cdfn" value="${esc(c.name)}" data-cid="${c.id}">
           <span class="bdg ${bc}">${c.disj}A</span>
           <button class="cdel" data-cid="${c.id}">✕</button>
         </div>
-        <div style="font-size:10px;color:var(--txt2)">Section: <strong style="color:var(--txt)">${c.sec}</strong> · <strong style="color:var(--txt)">${nb}</strong> élément(s)</div>
+        <div style="font-size:10px;color:var(--txt2)">Section: <strong style="color:var(--txt)">${c.sec}</strong> · <strong style="color:var(--txt)">${nb}</strong> él. · ${stHtml}</div>
       </div>`;
     });
   }
@@ -544,15 +571,24 @@ function renderCP(){
 
   // Assignment section
   h+=`<div class="asgn-hdr">Assignation des éléments</div>`;
-  const opts=S.circs.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
   S.lvls.forEach(lv=>{
     if(S.lvls.length>1)h+=`<div style="font-size:9px;color:var(--txt2);margin:5px 0 3px;font-weight:700;text-transform:uppercase;letter-spacing:1px">${esc(lv.name)}</div>`;
     lv.els.filter(el=>el.type!=='tableau').forEach((el,i)=>{
-      const t=T[el.type];const cur=S.assgn[el.id]||'';
+      const t=T[el.type];const curVal=String(S.assgn[el.id]||'');
+      const selC=S.circs.find(c=>String(c.id)===curVal);
+      const dotColor=selC?(cmap[selC.id]||'#888'):'';
+      let citems=`<div class="cdd-item${!curVal?' sel':''}" data-val="">— libre —</div>`;
+      S.circs.forEach(c=>{
+        const col=cmap[c.id]||'#888';
+        citems+=`<div class="cdd-item${String(c.id)===curVal?' sel':''}" data-val="${c.id}"><div class="cdd-item-dot" style="background:${col}"></div>${esc(c.name)}</div>`;
+      });
       h+=`<div class="arow">
         <div class="adot" style="background:${t.color}"></div>
         <span class="aname">${t.label} #${i+1}</span>
-        <select class="asel" data-elid="${el.id}"><option value="">— libre —</option>${opts}</select>
+        <div class="cdd" data-elid="${el.id}">
+          <div class="cdd-trg" tabindex="0"><div class="cdd-trg-dot" style="background:${dotColor};${selC?'':'visibility:hidden;'}"></div><span class="cdd-trg-lbl">${selC?esc(selC.name):'— libre —'}</span><span class="cdd-trg-arr">▾</span></div>
+          <div class="cdd-menu">${citems}</div>
+        </div>
       </div>`;
     });
   });
@@ -570,10 +606,29 @@ function renderCP(){
 
   p.innerHTML=h;
 
-  // Restore select values and bind events
-  p.querySelectorAll('.asel').forEach(sel=>{
-    const eid=sel.dataset.elid;sel.value=S.assgn[eid]||'';
-    sel.onchange=()=>{if(sel.value)S.assgn[eid]=sel.value;else delete S.assgn[eid];render();renderCP();};
+  // Bind custom dropdown events
+  render();
+  p.querySelectorAll('.cdd').forEach(cdd=>{
+    const eid=cdd.dataset.elid;
+    const trg=cdd.querySelector('.cdd-trg');
+    const menu=cdd.querySelector('.cdd-menu');
+    trg.onclick=(e)=>{
+      e.stopPropagation();
+      document.querySelectorAll('.cdd-menu.open').forEach(m=>{if(m!==menu)m.classList.remove('open');});
+      const rect=trg.getBoundingClientRect();
+      menu.style.top=(rect.bottom+2)+'px';
+      menu.style.left=rect.left+'px';
+      menu.classList.toggle('open');
+    };
+    menu.querySelectorAll('.cdd-item').forEach(item=>{
+      item.onclick=(e)=>{
+        e.stopPropagation();
+        const val=item.dataset.val;
+        if(val)S.assgn[eid]=val;else delete S.assgn[eid];
+        menu.classList.remove('open');
+        render();renderCP();
+      };
+    });
   });
   p.querySelectorAll('.cdfn').forEach(inp=>{inp.oninput=()=>{const c=S.circs.find(x=>String(x.id)===inp.dataset.cid);if(c)c.name=inp.value;};});
   p.querySelectorAll('.cdel').forEach(btn=>{btn.onclick=()=>{const cid=btn.dataset.cid;S.circs=S.circs.filter(c=>String(c.id)!==cid);Object.keys(S.assgn).forEach(k=>{if(String(S.assgn[k])===cid)delete S.assgn[k];});render();renderCP();};});
