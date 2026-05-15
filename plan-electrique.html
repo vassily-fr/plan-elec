@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlanÉlec v2</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
+:root{--bg:#0f0f13;--surf:#17171e;--surf2:#1e1e28;--surf3:#23232f;--brd:#2a2a38;--acc:#f0c040;--acc2:#5b8cff;--acc3:#ff6b6b;--acc4:#4ecdc4;--txt:#e8e8f0;--txt2:#8888a8;--grn:#5ddb8e;--orn:#ff9a3c;--r:8px;}
+*{box-sizing:border-box;margin:0;padding:0;}html,body{height:100%;overflow:hidden;font-family:'Syne',sans-serif;background:var(--bg);color:var(--txt);}
+#app{display:flex;flex-direction:column;height:100%;}
+#hdr{display:flex;align-items:center;gap:9px;padding:7px 13px;background:var(--surf);border-bottom:1px solid var(--brd);flex-shrink:0;z-index:50;}
+#hdr h1{font-size:16px;font-weight:800;color:var(--acc);letter-spacing:-.5px;white-space:nowrap;}
+#hdr h1 span{color:var(--txt2);font-weight:400;}
+.hs{width:1px;height:20px;background:var(--brd);}
+#body{display:flex;flex:1;overflow:hidden;}
+#tb{width:185px;background:var(--surf);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;}
+#tb::-webkit-scrollbar{width:3px;}#tb::-webkit-scrollbar-thumb{background:var(--brd);}
+.ts{padding:9px 9px 5px;border-bottom:1px solid var(--brd);}
+.ts h3{font-size:9px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--txt2);margin-bottom:5px;}
+.eb{display:flex;align-items:center;gap:7px;width:100%;padding:6px 7px;border-radius:var(--r);border:1px solid transparent;background:transparent;color:var(--txt);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:grab;transition:all .12s;text-align:left;margin-bottom:2px;user-select:none;}
+.eb:hover{background:var(--surf2);border-color:var(--brd);}
+.ei{width:26px;height:26px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.tbtn{display:flex;align-items:center;gap:6px;width:100%;padding:6px 7px;border-radius:var(--r);border:1px solid transparent;background:transparent;color:var(--txt2);font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:all .12s;margin-bottom:2px;}
+.tbtn:hover{background:var(--surf2);color:var(--txt);}
+.tbtn.on-sel{background:rgba(91,140,255,.12);border-color:var(--acc2);color:var(--acc2);}
+.tbtn.on-wire{background:rgba(255,154,60,.12);border-color:var(--orn);color:var(--orn);}
+.tbtn.on-line{background:rgba(93,219,142,.12);border-color:var(--grn);color:var(--grn);}
+.tbtn.on-scale{background:rgba(240,192,64,.12);border-color:var(--acc);color:var(--acc);}
+.tbtn.td{color:var(--acc3);}.tbtn.td:hover{background:rgba(255,107,107,.12);}
+#ca{flex:1;position:relative;overflow:hidden;background:#0a0a0f;background-image:radial-gradient(circle,#1c1c26 1px,transparent 1px);background-size:22px 22px;}
+#cv{position:absolute;top:0;left:0;}
+#chint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;}
+#chint h2{font-size:20px;font-weight:800;color:var(--txt2);}#chint p{font-size:12px;color:var(--txt2);margin-top:5px;}
+.fh{position:absolute;bottom:13px;left:50%;transform:translateX(-50%);padding:5px 14px;border-radius:18px;font-size:11px;font-weight:600;pointer-events:none;display:none;white-space:nowrap;}
+.fhw{background:var(--surf);border:1px solid var(--orn);color:var(--orn);}
+.fhl{background:var(--surf);border:1px solid var(--grn);color:var(--grn);}
+.fhs{background:var(--surf);border:1px solid var(--acc);color:var(--acc);}
+#ib{position:absolute;bottom:13px;right:13px;font-size:10px;color:var(--txt2);font-family:'DM Mono',monospace;pointer-events:none;}
+#rp{width:285px;background:var(--surf);border-left:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+.pts{display:flex;border-bottom:1px solid var(--brd);flex-shrink:0;}
+.pt{flex:1;padding:8px 3px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--txt2);font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:all .12s;}
+.pt.on{color:var(--acc);border-bottom-color:var(--acc);}
+.pc{flex:1;overflow-y:auto;padding:11px;}
+.pc::-webkit-scrollbar{width:3px;}.pc::-webkit-scrollbar-thumb{background:var(--brd);}
+.bg{margin-bottom:12px;}.bg h4{font-size:9px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--txt2);margin-bottom:5px;}
+.br{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:var(--r);background:var(--surf2);margin-bottom:3px;font-size:12px;}
+.br .lb{display:flex;align-items:center;gap:6px;color:var(--txt2);}
+.br .cnt{font-family:'DM Mono',monospace;font-size:14px;color:var(--acc);}.br .cnt.z{color:var(--txt2);}
+.wb{background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r);padding:11px;margin-bottom:8px;}
+.wb h4{font-size:9px;letter-spacing:1.8px;color:var(--txt2);font-weight:700;text-transform:uppercase;margin-bottom:7px;}
+.wb .wv{font-family:'DM Mono',monospace;font-size:19px;font-weight:500;color:var(--grn);}
+.wb .ws{font-size:10px;color:var(--txt2);margin-top:3px;}
+.wbk{font-size:10px;color:var(--txt2);margin-top:5px;font-family:'DM Mono',monospace;}
+.wbk div{display:flex;justify-content:space-between;padding:1px 0;}
+.wbk span{color:var(--txt);}
+.si{border-radius:var(--r);padding:6px 9px;font-size:10px;font-family:'DM Mono',monospace;margin-bottom:7px;display:none;}
+.si-ok{background:rgba(93,219,142,.1);border:1px solid var(--grn);color:var(--grn);}
+.si-ko{background:rgba(255,107,107,.1);border:1px solid var(--acc3);color:var(--acc3);}
+/* circuits */
+.btnorm{width:100%;padding:8px;border-radius:var(--r);border:1px dashed var(--acc2);background:transparent;color:var(--acc2);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:9px;transition:all .12s;}
+.btnorm:hover{background:rgba(91,140,255,.1);}
+.stot{border:1px solid var(--brd);border-radius:var(--r);padding:9px;background:var(--surf2);margin-bottom:9px;}
+.stot h4{font-size:9px;letter-spacing:1.8px;color:var(--txt2);text-transform:uppercase;font-weight:700;margin-bottom:7px;}
+.srow2{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;}
+.srow2 span{color:var(--txt2);}.srow2 strong{font-family:'DM Mono',monospace;color:var(--acc);}
+.cdf{background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r);padding:9px;margin-bottom:5px;}
+.cdft{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.cdfn{flex:1;background:var(--surf3);border:1px solid var(--brd);border-radius:5px;color:var(--txt);font-family:'Syne',sans-serif;font-size:11px;padding:3px 6px;}
+.cdfn:focus{outline:none;border-color:var(--acc);}
+.bdg{font-size:9px;padding:2px 6px;border-radius:16px;font-weight:700;font-family:'DM Mono',monospace;}
+.b10{background:#1a2a3a;color:var(--acc2);}.b16{background:#2a3a1a;color:var(--grn);}.b20{background:#3a2a1a;color:var(--orn);}
+.cdel{background:transparent;border:none;color:var(--acc3);font-size:13px;cursor:pointer;padding:1px 4px;border-radius:3px;}
+.cdel:hover{background:rgba(255,107,107,.15);}
+.badd{width:100%;padding:7px;border-radius:var(--r);border:1px dashed var(--brd);background:transparent;color:var(--txt2);font-family:'Syne',sans-serif;font-size:11px;cursor:pointer;transition:all .12s;margin-bottom:4px;}
+.badd:hover{border-color:var(--grn);color:var(--grn);}
+.asgn-hdr{font-size:9px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--txt2);margin:10px 0 6px;padding-top:10px;border-top:1px solid var(--brd);}
+.arow{display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(42,42,56,.5);font-size:11px;}
+.arow:last-child{border-bottom:none;}
+.adot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.aname{flex:1;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;}
+.asel{background:var(--surf3);border:1px solid var(--brd);border-radius:4px;color:var(--txt);font-family:'Syne',sans-serif;font-size:10px;padding:2px 4px;cursor:pointer;width:95px;}
+.asel:focus{outline:none;border-color:var(--acc2);}
+.cc{background:var(--surf2);border:1px solid var(--acc3);border-radius:var(--r);padding:10px;margin-top:6px;}
+.cc h4{font-size:11px;font-weight:700;color:var(--acc3);margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;}
+.cc .cd{font-size:11px;color:var(--txt2);line-height:1.9;}
+.cc .cd strong{color:var(--txt);}
+/* settings */
+.srow{margin-bottom:12px;}.srow label{display:block;font-size:11px;font-weight:700;color:var(--txt2);margin-bottom:4px;letter-spacing:.4px;}
+.srow input[type=range]{width:100%;accent-color:var(--acc);}
+.rv{font-family:'DM Mono',monospace;color:var(--acc);font-size:11px;float:right;}
+.nbox{background:var(--surf2);border:1px solid var(--brd);border-left:3px solid var(--acc2);border-radius:var(--r);padding:8px 10px;font-size:10px;color:var(--txt2);line-height:1.75;margin-bottom:11px;}
+.nbox strong{color:var(--acc2);}
+/* level tabs */
+#lvlt{display:flex;gap:3px;flex:1;overflow-x:auto;}.lvlt::-webkit-scrollbar{height:0;}
+.lbt{padding:3px 10px;border-radius:var(--r);border:1px solid var(--brd);background:transparent;color:var(--txt2);font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .12s;}
+.lbt.on{background:var(--acc);color:#0f0f13;border-color:var(--acc);}
+.lbt:hover:not(.on){border-color:var(--acc);color:var(--acc);}
+.hbt{padding:4px 9px;border-radius:var(--r);border:1px solid var(--brd);background:transparent;color:var(--txt2);font-family:'Syne',sans-serif;font-size:10px;font-weight:600;cursor:pointer;transition:all .12s;white-space:nowrap;}
+.hbt:hover{background:var(--surf2);color:var(--txt);}
+.hbt.hd:hover{background:rgba(255,107,107,.15);color:var(--acc3);border-color:var(--acc3);}
+#ctx{position:fixed;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);padding:4px;z-index:200;display:none;min-width:140px;box-shadow:0 8px 28px rgba(0,0,0,.6);}
+#ctx button{display:block;width:100%;padding:5px 10px;background:transparent;border:none;color:var(--txt);font-family:'Syne',sans-serif;font-size:12px;text-align:left;cursor:pointer;border-radius:4px;transition:background .1s;}
+#ctx button:hover{background:var(--surf2);}#ctx button.d{color:var(--acc3);}#ctx hr{border:none;border-top:1px solid var(--brd);margin:3px 0;}
+#tip{position:fixed;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);padding:3px 8px;font-size:10px;color:var(--txt);pointer-events:none;z-index:150;display:none;}
+.mb{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:300;display:none;align-items:center;justify-content:center;}
+.mb.show{display:flex;}
+.md{background:var(--surf);border:1px solid var(--brd);border-radius:11px;padding:20px;max-width:360px;width:90%;}
+.md h3{font-size:16px;font-weight:800;margin-bottom:11px;}
+.md p{font-size:12px;color:var(--txt2);margin-bottom:12px;line-height:1.6;}
+.md input[type=number]{width:100%;background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r);color:var(--txt);padding:8px 11px;font-family:'DM Mono',monospace;font-size:14px;outline:none;margin-bottom:5px;}
+.md input:focus{border-color:var(--acc);}
+.mbs{display:flex;gap:6px;justify-content:flex-end;margin-top:12px;}
+.bok{padding:6px 16px;background:var(--acc);color:#0f0f13;border:none;border-radius:var(--r);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
+.bok:hover{opacity:.85;}
+.bno{padding:6px 16px;background:transparent;color:var(--txt2);border:1px solid var(--brd);border-radius:var(--r);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="hdr">
+  <h1>Plan<span>Élec</span></h1>
+  <div class="hs"></div>
+  <div id="lvlt"></div>
+  <button class="hbt" id="bAddLvl">＋</button>
+  <button class="hbt hd" id="bDelLvl" title="Supprimer cet étage">✕</button>
+  <div class="hs"></div>
+  <button class="hbt" id="bSave">💾 Sauvegarder</button>
+  <button class="hbt" id="bLoad">📂 Charger</button>
+  <input type="file" id="jIn" accept=".json" style="display:none">
+</div>
+<div id="body">
+<div id="tb">
+  <div class="ts"><h3>Prises</h3>
+    <div class="eb" draggable="true" data-type="prise16">
+      <div class="ei"><svg viewBox="0 0 26 26" width="26" height="26"><circle cx="13" cy="13" r="9" fill="none" stroke="#f0c040" stroke-width="1.5"/><circle cx="9.5" cy="11" r="1.6" fill="#f0c040"/><circle cx="16.5" cy="11" r="1.6" fill="#f0c040"/><path d="M9.5 16 Q13 19 16.5 16" stroke="#f0c040" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg></div>Prise 16A
+    </div>
+    <div class="eb" draggable="true" data-type="prise20">
+      <div class="ei"><svg viewBox="0 0 26 26" width="26" height="26"><circle cx="13" cy="13" r="9" fill="none" stroke="#ff9a3c" stroke-width="1.5"/><circle cx="8" cy="11" r="1.6" fill="#ff9a3c"/><circle cx="18" cy="11" r="1.6" fill="#ff9a3c"/><circle cx="13" cy="11" r="1.6" fill="#ff9a3c"/><path d="M9 16 Q13 19 17 16" stroke="#ff9a3c" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg></div>Prise 20A
+    </div>
+  </div>
+  <div class="ts"><h3>Interrupteurs</h3>
+    <div class="eb" draggable="true" data-type="inter_simple">
+      <div class="ei"><svg viewBox="0 0 26 26" width="26" height="26"><rect x="3" y="8" width="20" height="10" rx="2.5" fill="none" stroke="#5b8cff" stroke-width="1.5"/><rect x="7" y="11" width="12" height="4" rx="1.5" fill="#5b8cff" opacity=".5"/><line x1="13" y1="3" x2="13" y2="8" stroke="#5b8cff" stroke-width="1.5"/></svg></div>Interrupteur
+    </div>
+    <div class="eb" draggable="true" data-type="inter_double">
+      <div class="ei"><svg viewBox="0 0 26 26" width="26" height="26"><rect x="1" y="8" width="24" height="10" rx="2.5" fill="none" stroke="#5b8cff" stroke-width="1.5"/><rect x="4" y="11" width="8" height="4" rx="1.5" fill="#5b8cff" opacity=".5"/><rect x="14" y="11" width="8" height="4" rx="1.5" fill="#5b8cff" opacity=".25"/></svg></div>Double / V-V
+    </div>
+  </div>
+  <div class="ts"><h3>Éclairage</h3>
+    <div class="eb" draggable="true" data-type="luminaire">
+      <div class="ei"><svg viewBox="0 0 26 26" width="26" height="26"><circle cx="13" cy="13" r="6" fill="none" stroke="#4ecdc4" stroke-width="1.5"/><circle cx="13" cy="13" r="2" fill="#4ecdc4"/><line x1="13" y1="2" x2="13" y2="7" stroke="#4ecdc4" stroke-width="1.4" stroke-linecap="round"/><line x1="13" y1="19" x2="13" y2="24" stroke="#4ecdc4" stroke-width="1.4" stroke-linecap="round"/><line x1="2" y1="13" x2="7" y2="13" stroke="#4ecdc4" stroke-width="1.4" stroke-linecap="round"/><line x1="19" y1="13" x2="24" y2="13" stroke="#4ecdc4" stroke-width="1.4" stroke-linecap="round"/><line x1="5" y1="5" x2="8.5" y2="8.5" stroke="#4ecdc4" stroke-width="1.2" stroke-linecap="round"/><line x1="17.5" y1="17.5" x2="21" y2="21" stroke="#4ecdc4" stroke-width="1.2" stroke-linecap="round"/><line x1="21" y1="5" x2="17.5" y2="8.5" stroke="#4ecdc4" stroke-width="1.2" stroke-linecap="round"/><line x1="8.5" y1="17.5" x2="5" y2="21" stroke="#4ecdc4" stroke-width="1.2" stroke-linecap="round"/></svg></div>Luminaire
+    </div>
+  </div>
+  <div class="ts"><h3>Infrastructure</h3>
+    <div class="eb" draggable="true" data-type="tableau">
+      <div class="ei"><svg viewBox="0 0 26 26" width="26" height="26"><rect x="2" y="3" width="22" height="20" rx="2" fill="none" stroke="#ff6b6b" stroke-width="1.5"/><line x1="2" y1="9" x2="24" y2="9" stroke="#ff6b6b" stroke-width="1"/><rect x="5" y="12" width="4" height="7" rx="1" fill="#ff6b6b" opacity=".5"/><rect x="11" y="12" width="4" height="7" rx="1" fill="#ff6b6b" opacity=".3"/><rect x="17" y="12" width="4" height="7" rx="1" fill="#ff6b6b" opacity=".2"/></svg></div>Tableau élec
+    </div>
+  </div>
+  <div class="ts"><h3>Outils</h3>
+    <button class="tbtn" id="tSel"><svg width="13" height="13" viewBox="0 0 13 13"><path d="M1 1L1 10L3.5 7.5L5.5 11.5L7.5 10.5L5.5 6.5L9 6.5Z" fill="currentColor"/></svg>Sélection</button>
+    <button class="tbtn" id="tLine"><svg width="13" height="13" viewBox="0 0 13 13"><line x1="1" y1="12" x2="12" y2="1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="1" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="1" r="1.5" fill="currentColor"/></svg>Ligne droite</button>
+    <button class="tbtn" id="tWire"><svg width="13" height="13" viewBox="0 0 13 13"><path d="M1 7Q4 1 7 6Q10 11 12 5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>Gaine libre</button>
+    <button class="tbtn" id="tScale"><svg width="13" height="13" viewBox="0 0 13 13"><line x1="1" y1="6.5" x2="12" y2="6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="1" y1="4" x2="1" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="4" x2="12" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Échelle</button>
+    <div style="border-top:1px solid var(--brd);margin:4px 0;"></div>
+    <button class="tbtn td" id="bClearW"><svg width="13" height="13" viewBox="0 0 13 13"><path d="M1 1L12 12M12 1L1 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Effacer gaines</button>
+    <button class="tbtn td" id="bClearAll"><svg width="13" height="13" viewBox="0 0 13 13"><path d="M1 3h11M5 3V1.5h3V3M4 3v8a1 1 0 001 1h3a1 1 0 001-1V3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>Tout effacer</button>
+    <div style="border-top:1px solid var(--brd);margin:4px 0;"></div>
+    <button class="tbtn" id="bLoadImg"><svg width="13" height="13" viewBox="0 0 13 13"><path d="M2 10V3h9v7H2z" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M4 5.5h5M6.5 4v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Charger plan</button>
+  </div>
+</div>
+<div id="ca">
+  <canvas id="cv"></canvas>
+  <div id="chint"><h2>Aucun plan chargé</h2><p>Glissez une image ici ou cliquez "Charger plan"</p></div>
+  <div class="fh fhw" id="fhW">Gaine: clic=point · Dbl-clic ou Entrée=terminer · Échap=annuler</div>
+  <div class="fh fhl" id="fhL">Ligne droite: 1er clic départ → 2e clic arrivée</div>
+  <div class="fh fhs" id="fhS">Tracez une ligne sur le plan pour définir l'échelle</div>
+  <div id="ib"></div>
+</div>
+<div id="rp">
+  <div class="pts">
+    <button class="pt on" data-tab="bilan">Bilan</button>
+    <button class="pt" data-tab="circuits">Circuits</button>
+    <button class="pt" data-tab="settings">Réglages</button>
+  </div>
+  <div class="pc" id="pB"></div>
+  <div class="pc" id="pC" style="display:none"></div>
+  <div class="pc" id="pS" style="display:none"></div>
+</div>
+</div>
+</div>
+<div id="ctx">
+  <button id="ctxRot">🔄 Pivoter 45°</button>
+  <button id="ctxDup">📋 Dupliquer</button>
+  <hr>
+  <button id="ctxDel" class="d">🗑 Supprimer</button>
+  <hr><button id="ctxX">Fermer</button>
+</div>
+<div id="tip"></div>
+<div class="mb" id="sMod">
+  <div class="md">
+    <h3>📏 Mise à l'échelle</h3>
+    <p>Vous venez de tracer une ligne.<br>Quelle est sa longueur réelle en mètres ?</p>
+    <input type="number" id="sVal" placeholder="ex: 3.5" step="0.01" min="0.01">
+    <div style="font-size:10px;color:var(--txt2)">Longueur en <strong style="color:var(--acc)">mètres</strong></div>
+    <div class="mbs"><button class="bno" id="sNo">Annuler</button><button class="bok" id="sOk">Confirmer</button></div>
+  </div>
+</div>
+<input type="file" id="iIn" accept="image/*" style="display:none">
+<script>
+// ═══════ TYPES ═══════
+const T={
+  prise16:{label:'Prise 16A',color:'#f0c040',cat:'prise',amp:16,sec:'2.5mm²'},
+  prise20:{label:'Prise 20A',color:'#ff9a3c',cat:'prise20',amp:20,sec:'2.5mm²'},
+  inter_simple:{label:'Interrupteur',color:'#5b8cff',cat:'inter',amp:10,sec:'1.5mm²'},
+  inter_double:{label:'Double/V-V',color:'#5b8cff',cat:'inter',amp:10,sec:'1.5mm²'},
+  luminaire:{label:'Luminaire',color:'#4ecdc4',cat:'lumiere',amp:10,sec:'1.5mm²'},
+  tableau:{label:'Tableau',color:'#ff6b6b',cat:'tableau',amp:0,sec:'-'},
+};
+// ═══════ STATE ═══════
+const S={
+  lvls:[],curLvl:0,scale:null,
+  tool:'select',drag:null,dragOff:{x:0,y:0},
+  wirePs:[],linePt:null,scaleS:null,
+  selEl:null,ctxEl:null,mx:0,my:0,
+  circs:[],   // {id,name,disj,sec,type}
+  assgn:{},   // elId -> circId
+  cfg:{margin:10,maxP16:8,maxLum:8}
+};
+const CC=['#5b8cff','#5ddb8e','#ff9a3c','#e879f9','#f0c040','#4ecdc4','#ff85a1','#a3e635'];
+const bgC={};
+
+// ═══════ LEVELS ═══════
+function addLvl(name){S.lvls.push({id:Date.now()+Math.random(),name:name||('Étage '+S.lvls.length),img:null,els:[],wires:[]});S.curLvl=S.lvls.length-1;rLvlTabs();}
+function switchLvl(i){S.curLvl=i;S.wirePs=[];S.linePt=null;S.selEl=null;rLvlTabs();render();upPanels();}
+function delCurLvl(){if(S.lvls.length<=1){alert('Impossible de supprimer le seul étage.');return;}S.lvls.splice(S.curLvl,1);S.curLvl=Math.min(S.curLvl,S.lvls.length-1);rLvlTabs();render();upPanels();}
+function rLvlTabs(){const c=document.getElementById('lvlt');c.innerHTML='';S.lvls.forEach((l,i)=>{const b=document.createElement('button');b.className='lbt'+(i===S.curLvl?' on':'');b.textContent=l.name;b.ondblclick=()=>{const n=prompt('Nom:',l.name);if(n)l.name=n;rLvlTabs();};b.onclick=()=>switchLvl(i);c.appendChild(b);});}
+const lvl=()=>S.lvls[S.curLvl];
+
+// ═══════ CANVAS ═══════
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),ca=document.getElementById('ca');
+function resCV(){cv.width=ca.clientWidth;cv.height=ca.clientHeight;render();}
+window.addEventListener('resize',resCV);
+
+// ═══════ TOOLS ═══════
+function setTool(t){
+  S.tool=t;S.wirePs=[];S.linePt=null;S.scaleS=null;
+  const mp={'select':'on-sel','line':'on-line','wire':'on-wire','scale':'on-scale'};
+  ['tSel','tLine','tWire','tScale'].forEach(id=>{
+    const el=document.getElementById(id);el.className='tbtn';
+    if((id==='tSel'&&t==='select')||(id==='tLine'&&t==='line')||(id==='tWire'&&t==='wire')||(id==='tScale'&&t==='scale')) el.classList.add(mp[t],'on-active');
+  });
+  cv.style.cursor=t==='wire'?'cell':t==='line'||t==='scale'?'crosshair':'default';
+  document.getElementById('fhW').style.display=t==='wire'?'block':'none';
+  document.getElementById('fhL').style.display=t==='line'?'block':'none';
+  document.getElementById('fhS').style.display=t==='scale'?'block':'none';
+  render();
+}
+
+// ═══════ TOOLBAR EVENTS ═══════
+function setupTB(){
+  document.querySelectorAll('.eb[draggable]').forEach(b=>{b.addEventListener('dragstart',e=>{S._dt=b.dataset.type;e.dataTransfer.setData('text/plain',b.dataset.type);});});
+  ca.addEventListener('dragover',e=>e.preventDefault());
+  ca.addEventListener('drop',e=>{
+    e.preventDefault();
+    if(e.dataTransfer.files.length>0){const f=e.dataTransfer.files[0];if(f.type.startsWith('image/'))loadImg(f);return;}
+    const type=e.dataTransfer.getData('text/plain');if(!T[type])return;
+    const r=cv.getBoundingClientRect();placeEl(type,e.clientX-r.left,e.clientY-r.top);
+  });
+  document.getElementById('tSel').onclick=()=>setTool('select');
+  document.getElementById('tLine').onclick=()=>setTool('line');
+  document.getElementById('tWire').onclick=()=>setTool('wire');
+  document.getElementById('tScale').onclick=()=>setTool('scale');
+  document.getElementById('bClearW').onclick=()=>{if(!confirm('Effacer les gaines de cet étage ?'))return;lvl().wires=[];render();upPanels();};
+  document.getElementById('bClearAll').onclick=()=>{if(!confirm('Effacer tout sur cet étage ?'))return;lvl().els=[];lvl().wires=[];render();upPanels();};
+  document.getElementById('bLoadImg').onclick=()=>document.getElementById('iIn').click();
+  document.getElementById('iIn').addEventListener('change',e=>{if(e.target.files[0])loadImg(e.target.files[0]);e.target.value='';});
+}
+
+function loadImg(file){const r=new FileReader();r.onload=ev=>{const l=lvl();l.img=ev.target.result;delete bgC[l.id];document.getElementById('chint').style.display='none';render();};r.readAsDataURL(file);}
+
+// ═══════ CANVAS EVENTS ═══════
+function setupCV(){
+  cv.addEventListener('mousemove',e=>{
+    const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;S.mx=x;S.my=y;
+    if(S.drag){S.drag.x=x-S.dragOff.x;S.drag.y=y-S.dragOff.y;render();return;}
+    const el=elAt(x,y);const tip=document.getElementById('tip');
+    if(el&&S.tool==='select'){
+      tip.style.display='block';tip.style.left=(e.clientX+13)+'px';tip.style.top=(e.clientY-7)+'px';
+      const ci=S.assgn[el.id];const cn=ci?S.circs.find(c=>c.id===ci):null;
+      tip.textContent=T[el.type].label+' · '+T[el.type].sec+(cn?' · Circuit: '+cn.name:'');
+    } else tip.style.display='none';
+    if((S.tool==='wire'&&S.wirePs.length>0)||(S.tool==='line'&&S.linePt)||(S.tool==='scale'&&S.scaleS&&!S.scaleS.done)) render();
+    const ib=document.getElementById('ib');
+    ib.textContent=S.scale?`Échelle: 1m=${S.scale.toFixed(0)}px · Pos: (${(x/S.scale).toFixed(2)}m, ${(y/S.scale).toFixed(2)}m)`:'';
+  });
+  cv.addEventListener('mousedown',e=>{
+    if(e.button!==0)return;
+    const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;
+    if(S.tool==='select'){const el=elAt(x,y);if(el){S.drag=el;S.selEl=el;S.dragOff={x:x-el.x,y:y-el.y};}else S.selEl=null;render();}
+    else if(S.tool==='wire'){S.wirePs.push({x,y});}
+    else if(S.tool==='line'){if(!S.linePt){S.linePt={x,y};}else{lvl().wires.push([S.linePt,{x,y}]);S.linePt=null;render();upPanels();}}
+    else if(S.tool==='scale'){if(!S.scaleS){S.scaleS={x1:x,y1:y};}else if(!S.scaleS.done){S.scaleS.x2=x;S.scaleS.y2=y;S.scaleS.done=true;document.getElementById('sMod').classList.add('show');setTimeout(()=>document.getElementById('sVal').focus(),50);}}
+  });
+  cv.addEventListener('mouseup',()=>{if(S.drag){S.drag=null;upPanels();}});
+  cv.addEventListener('dblclick',()=>{if(S.tool==='wire'&&S.wirePs.length>=2)finWire();});
+  cv.addEventListener('contextmenu',e=>{
+    e.preventDefault();const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;
+    if(S.tool==='wire'){if(S.wirePs.length>=2)finWire();else S.wirePs=[];render();return;}
+    const el=elAt(x,y);if(el){S.ctxEl=el;showCtx(e.clientX,e.clientY);}
+  });
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){S.wirePs=[];S.linePt=null;S.scaleS=null;hideCtx();render();}
+    if(e.key==='Enter'&&S.tool==='wire'&&S.wirePs.length>=2)finWire();
+    if((e.key==='Delete'||e.key==='Backspace')&&S.selEl&&!e.target.matches('input,select,textarea'))delEl(S.selEl);
+  });
+}
+
+function finWire(){if(S.wirePs.length<2){S.wirePs=[];render();return;}lvl().wires.push([...S.wirePs]);S.wirePs=[];render();upPanels();}
+function elAt(x,y){const els=lvl().els;for(let i=els.length-1;i>=0;i--){const e=els[i];const dx=e.x-x,dy=e.y-y;if(dx*dx+dy*dy<=400)return e;}return null;}
+function placeEl(type,x,y){const el={id:Date.now()+Math.random(),type,x,y,rot:0};lvl().els.push(el);render();upPanels();}
+function delEl(el){const l=lvl();l.els=l.els.filter(e=>e.id!==el.id);delete S.assgn[el.id];S.selEl=null;render();upPanels();}
+
+// ═══════ RENDER ═══════
+function drawEl(type,x,y,rot,sel,circColor){
+  const t=T[type];ctx.save();ctx.translate(x,y);ctx.rotate(rot*Math.PI/180);
+  if(sel){ctx.beginPath();ctx.arc(0,0,16,0,Math.PI*2);ctx.fillStyle='rgba(240,192,64,.12)';ctx.fill();ctx.strokeStyle='#f0c040';ctx.lineWidth=1.5;ctx.stroke();}
+  ctx.strokeStyle=t.color;ctx.fillStyle=t.color;ctx.lineWidth=1.5;
+  switch(type){
+    case 'prise16':ctx.beginPath();ctx.arc(0,0,9,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(-3,-2,1.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(3,-2,1.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(0,3,2.5,0,Math.PI);ctx.stroke();break;
+    case 'prise20':ctx.beginPath();ctx.arc(0,0,9,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(-4,-2,1.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(4,-2,1.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(0,-2,1.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(0,3,2.5,0,Math.PI);ctx.stroke();break;
+    case 'inter_simple':ctx.beginPath();ctx.roundRect(-9,-6,18,10,2);ctx.stroke();ctx.fillStyle=t.color+'77';ctx.beginPath();ctx.roundRect(-6,-3,12,4,1.5);ctx.fill();ctx.strokeStyle=t.color;ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(0,-6);ctx.stroke();break;
+    case 'inter_double':ctx.beginPath();ctx.roundRect(-11,-6,22,10,2);ctx.stroke();ctx.fillStyle=t.color+'66';ctx.beginPath();ctx.roundRect(-9,-3,8,4,1.5);ctx.fill();ctx.fillStyle=t.color+'33';ctx.beginPath();ctx.roundRect(1,-3,8,4,1.5);ctx.fill();break;
+    case 'luminaire':ctx.beginPath();ctx.arc(0,0,7,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(0,0,2,0,Math.PI*2);ctx.fill();for(let a=0;a<8;a++){const ag=a*Math.PI/4;ctx.beginPath();ctx.moveTo(Math.cos(ag)*9,Math.sin(ag)*9);ctx.lineTo(Math.cos(ag)*13,Math.sin(ag)*13);ctx.stroke();}break;
+    case 'tableau':ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(-11,-8,22,16,2);ctx.stroke();ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-11,-2);ctx.lineTo(11,-2);ctx.stroke();for(let i=0;i<3;i++){ctx.fillStyle=t.color+(i===0?'cc':'44');ctx.beginPath();ctx.roundRect(-8+i*6,0,4,5,1);ctx.fill();}break;
+  }
+  ctx.restore();
+  ctx.save();ctx.font='9px Syne,sans-serif';ctx.fillStyle=t.color+'99';ctx.textAlign='center';ctx.fillText(t.label,x,y+20);ctx.restore();
+  if(circColor){ctx.beginPath();ctx.arc(x+11,y-11,4.5,0,Math.PI*2);ctx.fillStyle=circColor;ctx.fill();ctx.beginPath();ctx.arc(x+11,y-11,4.5,0,Math.PI*2);ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=1;ctx.stroke();}
+}
+
+function render(){
+  const l=lvl();ctx.clearRect(0,0,cv.width,cv.height);
+  if(l.img){
+    let img=bgC[l.id];
+    if(!img||img._s!==l.img){img=new Image();img._s=l.img;img.src=l.img;bgC[l.id]=img;}
+    if(img.complete&&img.naturalWidth){
+      const sc=Math.min(cv.width/img.naturalWidth,cv.height/img.naturalHeight);
+      const w=img.naturalWidth*sc,h=img.naturalHeight*sc;
+      ctx.globalAlpha=.8;ctx.drawImage(img,(cv.width-w)/2,(cv.height-h)/2,w,h);ctx.globalAlpha=1;
+    } else img.onload=()=>render();
+    document.getElementById('chint').style.display='none';
+  } else document.getElementById('chint').style.display=l.els.length?'none':'block';
+
+  const cmap={};S.circs.forEach((c,i)=>cmap[c.id]=CC[i%CC.length]);
+
+  l.wires.forEach(w=>{ctx.beginPath();ctx.strokeStyle='#ff9a3c';ctx.lineWidth=2;ctx.setLineDash([]);ctx.moveTo(w[0].x,w[0].y);for(let i=1;i<w.length;i++)ctx.lineTo(w[i].x,w[i].y);ctx.stroke();w.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,2.5,0,Math.PI*2);ctx.fillStyle='#ff9a3c';ctx.fill();});});
+
+  if(S.tool==='wire'&&S.wirePs.length>0){ctx.beginPath();ctx.strokeStyle='#ff9a3c88';ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.moveTo(S.wirePs[0].x,S.wirePs[0].y);for(let i=1;i<S.wirePs.length;i++)ctx.lineTo(S.wirePs[i].x,S.wirePs[i].y);ctx.lineTo(S.mx,S.my);ctx.stroke();ctx.setLineDash([]);S.wirePs.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,2.5,0,Math.PI*2);ctx.fillStyle='#ff9a3c';ctx.fill();});}
+  if(S.tool==='line'&&S.linePt){ctx.beginPath();ctx.strokeStyle='#5ddb8e88';ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.moveTo(S.linePt.x,S.linePt.y);ctx.lineTo(S.mx,S.my);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.arc(S.linePt.x,S.linePt.y,4,0,Math.PI*2);ctx.fillStyle='#5ddb8e';ctx.fill();}
+  if(S.scaleS){ctx.beginPath();ctx.strokeStyle='#f0c04099';ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.moveTo(S.scaleS.x1,S.scaleS.y1);if(S.scaleS.done)ctx.lineTo(S.scaleS.x2,S.scaleS.y2);else ctx.lineTo(S.mx,S.my);ctx.stroke();ctx.setLineDash([]);}
+
+  l.els.forEach(el=>{drawEl(el.type,el.x,el.y,el.rot,el===S.selEl,cmap[S.assgn[el.id]]||null);});
+}
+
+// ═══════ SCALE MODAL ═══════
+document.getElementById('sOk').onclick=()=>{
+  const v=parseFloat(document.getElementById('sVal').value);if(!v||v<=0){alert('Valeur invalide');return;}
+  const dx=S.scaleS.x2-S.scaleS.x1,dy=S.scaleS.y2-S.scaleS.y1;S.scale=Math.sqrt(dx*dx+dy*dy)/v;
+  S.scaleS=null;document.getElementById('sMod').classList.remove('show');document.getElementById('sVal').value='';
+  setTool('select');upPanels();
+};
+document.getElementById('sNo').onclick=()=>{S.scaleS=null;document.getElementById('sMod').classList.remove('show');};
+document.getElementById('sMod').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('sOk').click();});
+
+// ═══════ CTX MENU ═══════
+function setupCtx(){
+  document.getElementById('ctxRot').onclick=()=>{if(S.ctxEl){S.ctxEl.rot=(S.ctxEl.rot+45)%360;render();}hideCtx();};
+  document.getElementById('ctxDup').onclick=()=>{if(S.ctxEl)placeEl(S.ctxEl.type,S.ctxEl.x+22,S.ctxEl.y+22);hideCtx();};
+  document.getElementById('ctxDel').onclick=()=>{if(S.ctxEl)delEl(S.ctxEl);hideCtx();};
+  document.getElementById('ctxX').onclick=hideCtx;
+  document.addEventListener('click',e=>{if(!e.target.closest('#ctx'))hideCtx();});
+}
+function showCtx(x,y){const m=document.getElementById('ctx');m.style.display='block';m.style.left=x+'px';m.style.top=y+'px';}
+function hideCtx(){document.getElementById('ctx').style.display='none';}
+
+// ═══════ PANEL TABS ═══════
+function setupPTabs(){
+  document.querySelectorAll('.pt').forEach(tab=>{
+    tab.onclick=()=>{
+      document.querySelectorAll('.pt').forEach(t=>t.classList.remove('on'));tab.classList.add('on');
+      ['pB','pC','pS'].forEach(id=>document.getElementById(id).style.display='none');
+      const m={bilan:'pB',circuits:'pC',settings:'pS'};
+      document.getElementById(m[tab.dataset.tab]).style.display='block';
+      if(tab.dataset.tab==='circuits')renderCP();
+    };
+  });
+}
+
+// ═══════ BILAN ═══════
+function countAll(){const c={};Object.keys(T).forEach(k=>c[k]=0);S.lvls.forEach(l=>l.els.forEach(el=>c[el.type]++));return c;}
+function wireMtrs(){let px=0;S.lvls.forEach(l=>l.wires.forEach(w=>{for(let i=1;i<w.length;i++){const dx=w[i].x-w[i-1].x,dy=w[i].y-w[i-1].y;px+=Math.sqrt(dx*dx+dy*dy);}}));return S.scale?px/S.scale:null;}
+
+function upPanels(){renderBP();if(document.getElementById('pC').style.display!=='none')renderCP();}
+
+function renderBP(){
+  const cnt=countAll(),wm=wireMtrs(),mg=1+S.cfg.margin/100;let h='';
+  h+=S.scale?`<div class="si si-ok" style="display:block">✓ Échelle définie : 1m = ${S.scale.toFixed(0)}px</div>`:`<div class="si si-ko" style="display:block">⚠ Échelle non définie — longueurs non calculées</div>`;
+  const grps=[{t:'Prises',k:['prise16','prise20']},{t:'Interrupteurs',k:['inter_simple','inter_double']},{t:'Éclairage',k:['luminaire']},{t:'Infrastructure',k:['tableau']}];
+  grps.forEach(g=>{h+=`<div class="bg"><h4>${g.t}</h4>`;g.k.forEach(k=>{const n=cnt[k]||0;h+=`<div class="br"><span class="lb"><span style="color:${T[k].color}">●</span>${T[k].label}</span><span class="cnt${n===0?' z':''}">${n}</span></div>`;});h+='</div>';});
+  if(S.lvls.length>1){h+='<div class="bg"><h4>Par étage</h4>';S.lvls.forEach(l=>{const n=l.els.length;h+=`<div class="br"><span class="lb">${esc(l.name)}</span><span class="cnt${n===0?' z':''}">${n} élém.</span></div>`;});h+='</div>';}
+  h+='<div class="wb"><h4>Gaines & Câbles</h4>';
+  if(wm!==null){
+    const tot=(wm*mg).toFixed(1);h+=`<div class="wv">${tot} m</div><div class="ws">Total gaines (+${S.cfg.margin}% marge) / ${wm.toFixed(1)}m tracés</div><div class="wbk">`;
+    if((cnt.luminaire+cnt.inter_simple+cnt.inter_double)>0)h+=`<div><span>Fil 1.5mm² (éclairage)</span>~${(wm*mg*0.3).toFixed(1)}m</div>`;
+    if((cnt.prise16+cnt.prise20)>0)h+=`<div><span>Fil 2.5mm² (prises)</span>~${(wm*mg*0.6).toFixed(1)}m</div>`;
+    h+=`<div style="font-size:9px;color:var(--txt2);margin-top:3px">Estimation proportionnelle</div></div>`;
+  } else {
+    h+=`<div class="wv" style="color:var(--txt2)">— m</div><div class="ws">Définissez l'échelle d'abord</div>`;
+  }
+  h+='</div>';
+  document.getElementById('pB').innerHTML=h;
+}
+
+// ═══════ CIRCUITS PANEL ═══════
+function autoAssign(){
+  S.circs=[];S.assgn={};
+  const all=[];S.lvls.forEach(l=>l.els.forEach(el=>all.push(el)));
+  const els16=all.filter(e=>e.type==='prise16');
+  const els20=all.filter(e=>e.type==='prise20');
+  const elsL=all.filter(e=>e.type==='luminaire');
+  const elsI=all.filter(e=>e.type==='inter_simple'||e.type==='inter_double');
+  const mk=(name,type,disj,sec)=>{const c={id:Date.now()+Math.random()+Math.random(),name,type,disj,sec};S.circs.push(c);return c;};
+  const max16=Math.max(1,Math.min(8,S.cfg.maxP16));
+  let n16=0;
+  els16.forEach((el,i)=>{if(i%max16===0){n16++;mk(`Prises 16A-${n16}`,'prise16',16,'2.5mm²');}S.assgn[el.id]=S.circs[S.circs.length-1].id;});
+  els20.forEach((el,i)=>{const c=mk(`Prise 20A-${i+1}`,'prise20',20,'2.5mm²');S.assgn[el.id]=c.id;});
+  const maxL=Math.max(1,Math.min(8,S.cfg.maxLum));
+  const lCircs=[];let nL=0;
+  elsL.forEach((el,i)=>{if(i%maxL===0){nL++;lCircs.push(mk(`Éclairage-${nL}`,'lumiere',10,'1.5mm²'));}S.assgn[el.id]=S.circs[S.circs.length-1].id;});
+  elsI.forEach((el,i)=>{const c=lCircs[Math.min(Math.floor(i*lCircs.length/Math.max(1,elsI.length)),lCircs.length-1)];if(c)S.assgn[el.id]=c.id;});
+  render();renderCP();
+}
+
+function allElCnt(){let n=0;S.lvls.forEach(l=>l.els.forEach(el=>{if(el.type!=='tableau')n++;}));return n;}
+function esc(s){return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function renderCP(){
+  const p=document.getElementById('pC');if(!p||p.style.display==='none')return;
+  const cmap={};S.circs.forEach((c,i)=>cmap[c.id]=CC[i%CC.length]);
+  const tot=allElCnt(),asgd=Object.keys(S.assgn).length;
+  let h='';
+  h+=`<button class="btnorm" id="bAuto">⚡ Répartition automatique NF C 15-100</button>`;
+  h+=`<div class="stot"><h4>Résumé</h4>
+    <div class="srow2"><span>Circuits définis</span><strong>${S.circs.length}</strong></div>
+    <div class="srow2"><span>Éléments assignés</span><strong>${asgd}</strong></div>
+    <div class="srow2"><span>Non assignés</span><strong style="color:${asgd<tot?'var(--acc3)':'var(--grn)'}">${tot-asgd}</strong></div>
+  </div>`;
+
+  if(S.circs.length===0){
+    h+=`<div style="text-align:center;padding:18px;font-size:11px;color:var(--txt2)">Aucun circuit défini.<br>Cliquez sur "Répartition automatique" ou ajoutez manuellement.</div>`;
+  } else {
+    S.circs.forEach(c=>{
+      const bc=c.disj<=10?'b10':c.disj<=16?'b16':'b20';
+      const nb=Object.values(S.assgn).filter(id=>id===c.id).length;
+      h+=`<div class="cdf">
+        <div class="cdft">
+          <div style="width:10px;height:10px;border-radius:50%;background:${cmap[c.id]||'#888'};flex-shrink:0;"></div>
+          <input class="cdfn" value="${esc(c.name)}" data-cid="${c.id}">
+          <span class="bdg ${bc}">${c.disj}A</span>
+          <button class="cdel" data-cid="${c.id}">✕</button>
+        </div>
+        <div style="font-size:10px;color:var(--txt2)">Section: <strong style="color:var(--txt)">${c.sec}</strong> · <strong style="color:var(--txt)">${nb}</strong> élément(s)</div>
+      </div>`;
+    });
+  }
+
+  h+=`<button class="badd" id="bAddP16">+ Circuit prises 16A (2.5mm²)</button>`;
+  h+=`<button class="badd" id="bAddP20">+ Circuit prise 20A spécialisée</button>`;
+  h+=`<button class="badd" id="bAddLum">+ Circuit éclairage 10A (1.5mm²)</button>`;
+
+  // Assignment section
+  h+=`<div class="asgn-hdr">Assignation des éléments</div>`;
+  const opts=S.circs.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  S.lvls.forEach(lv=>{
+    if(S.lvls.length>1)h+=`<div style="font-size:9px;color:var(--txt2);margin:5px 0 3px;font-weight:700;text-transform:uppercase;letter-spacing:1px">${esc(lv.name)}</div>`;
+    lv.els.filter(el=>el.type!=='tableau').forEach((el,i)=>{
+      const t=T[el.type];const cur=S.assgn[el.id]||'';
+      h+=`<div class="arow">
+        <div class="adot" style="background:${t.color}"></div>
+        <span class="aname">${t.label} #${i+1}</span>
+        <select class="asel" data-elid="${el.id}"><option value="">— libre —</option>${opts}</select>
+      </div>`;
+    });
+  });
+
+  // Tableau summary
+  const dmap={};S.circs.forEach(c=>{const k=c.disj+'|'+c.sec;if(!dmap[k])dmap[k]={amp:c.disj,sec:c.sec,nb:0};dmap[k].nb++;});
+  const dsumm=Object.values(dmap);
+  h+=`<div class="cc">
+    <h4>Tableau électrique <span class="bdg b20">Bilan</span></h4>
+    <div class="cd">`;
+  dsumm.forEach(d=>{h+=`<div>${d.nb}× disjoncteur <strong>${d.amp}A</strong> (${d.sec})</div>`;});
+  h+=`<div style="margin-top:5px">Total: <strong>${S.circs.length}</strong> disj. + 1 différentiel 30mA</div>`;
+  h+=`<div style="margin-top:3px;font-size:10px">Tableau min.: <strong>${S.circs.length+2}</strong> modules</div>`;
+  h+='</div></div>';
+
+  p.innerHTML=h;
+
+  // Restore select values and bind events
+  p.querySelectorAll('.asel').forEach(sel=>{
+    const eid=sel.dataset.elid;sel.value=S.assgn[eid]||'';
+    sel.onchange=()=>{if(sel.value)S.assgn[eid]=sel.value;else delete S.assgn[eid];render();renderCP();};
+  });
+  p.querySelectorAll('.cdfn').forEach(inp=>{inp.oninput=()=>{const c=S.circs.find(x=>String(x.id)===inp.dataset.cid);if(c)c.name=inp.value;};});
+  p.querySelectorAll('.cdel').forEach(btn=>{btn.onclick=()=>{const cid=btn.dataset.cid;S.circs=S.circs.filter(c=>String(c.id)!==cid);Object.keys(S.assgn).forEach(k=>{if(String(S.assgn[k])===cid)delete S.assgn[k];});render();renderCP();};});
+  document.getElementById('bAuto').onclick=()=>{if(confirm('Répartition auto NF C 15-100 ? Les assignations actuelles seront écrasées.'))autoAssign();};
+  document.getElementById('bAddP16').onclick=()=>{S.circs.push({id:Date.now()+Math.random(),name:`Prises 16A-${S.circs.length+1}`,type:'prise16',disj:16,sec:'2.5mm²'});renderCP();};
+  document.getElementById('bAddP20').onclick=()=>{S.circs.push({id:Date.now()+Math.random(),name:`Prise 20A-${S.circs.length+1}`,type:'prise20',disj:20,sec:'2.5mm²'});renderCP();};
+  document.getElementById('bAddLum').onclick=()=>{S.circs.push({id:Date.now()+Math.random(),name:`Éclairage-${S.circs.length+1}`,type:'lumiere',disj:10,sec:'1.5mm²'});renderCP();};
+}
+
+// ═══════ SETTINGS ═══════
+function setupSettings(){
+  const p=document.getElementById('pS');
+  p.innerHTML=`<div class="nbox"><strong>NF C 15-100</strong><br>8 prises 16A max/circuit · 1 prise 20A/circuit · 8 lumineux max/circuit 10A · Section 1.5mm² éclairage · 2.5mm² prises</div>
+  <div class="srow"><label>Marge gaines <span class="rv" id="vM">${S.cfg.margin}%</span></label><input type="range" id="sM" min="5" max="30" step="5" value="${S.cfg.margin}"></div>
+  <div class="srow"><label>Prises 16A max/circuit <span class="rv" id="vP">${S.cfg.maxP16}</span></label><input type="range" id="sP" min="1" max="8" step="1" value="${S.cfg.maxP16}"><div style="font-size:9px;color:var(--txt2);margin-top:2px">NFC max: 8</div></div>
+  <div class="srow"><label>Lumineux max/circuit <span class="rv" id="vL">${S.cfg.maxLum}</span></label><input type="range" id="sL" min="1" max="8" step="1" value="${S.cfg.maxLum}"><div style="font-size:9px;color:var(--txt2);margin-top:2px">NFC max: 8</div></div>
+  <div class="srow" style="margin-top:14px"><label>Sections (rappel)</label>
+    <div style="font-size:10px;color:var(--txt2);line-height:1.9">
+      🟡 <strong style="color:var(--txt)">1.5mm²</strong> — Éclairage (10A)<br>
+      🔵 <strong style="color:var(--txt)">2.5mm²</strong> — Prises 16A &amp; 20A<br>
+      ⚫ <strong style="color:var(--txt)">10mm²</strong> — Arrivée principale
+    </div>
+  </div>`;
+  p.querySelector('#sM').oninput=e=>{S.cfg.margin=+e.target.value;p.querySelector('#vM').textContent=S.cfg.margin+'%';upPanels();};
+  p.querySelector('#sP').oninput=e=>{S.cfg.maxP16=+e.target.value;p.querySelector('#vP').textContent=S.cfg.maxP16;upPanels();};
+  p.querySelector('#sL').oninput=e=>{S.cfg.maxLum=+e.target.value;p.querySelector('#vL').textContent=S.cfg.maxLum;upPanels();};
+}
+
+// ═══════ HEADER ═══════
+function setupHdr(){
+  document.getElementById('bAddLvl').onclick=()=>{const n=prompt('Nom:',`Étage ${S.lvls.length}`);if(n!==null)addLvl(n);};
+  document.getElementById('bDelLvl').onclick=delCurLvl;
+  document.getElementById('bSave').onclick=()=>{
+    const d={v:2,scale:S.scale,cfg:S.cfg,circs:S.circs,assgn:S.assgn,lvls:S.lvls};
+    const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='plan-electrique.json';a.click();
+  };
+  document.getElementById('bLoad').onclick=()=>document.getElementById('jIn').click();
+  document.getElementById('jIn').onchange=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();r.onload=ev=>{
+      try{const d=JSON.parse(ev.target.result);if(d.v!==2){alert('Format non reconnu.');return;}
+        S.scale=d.scale;S.cfg={...S.cfg,...d.cfg};S.circs=d.circs||[];S.assgn=d.assgn||{};S.lvls=d.lvls;S.curLvl=0;
+        Object.keys(bgC).forEach(k=>delete bgC[k]);rLvlTabs();render();setupSettings();upPanels();
+      }catch(err){alert('Erreur: '+err.message);}
+    };r.readAsText(f);e.target.value='';
+  };
+}
+
+// ═══════ START ═══════
+function init(){
+  addLvl('RDC');
+  setupTB();setupCV();setupPTabs();setupSettings();setupCtx();setupHdr();
+  setTool('select');resCV();upPanels();
+}
+init();
+</script>
+</body>
+</html>
