@@ -641,7 +641,10 @@ function renderCP(){
       };
     });
   });
-  p.querySelectorAll('.cdfn').forEach(inp=>{inp.oninput=()=>{const c=S.circs.find(x=>String(x.id)===inp.dataset.cid);if(c)c.name=inp.value;};});
+  p.querySelectorAll('.cdfn').forEach(inp=>{
+    inp.oninput=()=>{const c=S.circs.find(x=>String(x.id)===inp.dataset.cid);if(c)c.name=inp.value;};
+    inp.onblur=()=>renderCP();
+  });
   p.querySelectorAll('.cdel').forEach(btn=>{btn.onclick=()=>{const cid=btn.dataset.cid;S.circs=S.circs.filter(c=>String(c.id)!==cid);Object.keys(S.assgn).forEach(k=>{if(String(S.assgn[k])===cid)delete S.assgn[k];});render();renderCP();};});
   document.getElementById('bAuto').onclick=()=>{if(confirm('Répartition auto NF C 15-100 ? Les assignations actuelles seront écrasées.'))autoAssign();};
   document.getElementById('bAddP16').onclick=()=>{S.circs.push({id:Date.now()+Math.random(),name:`Prises 16A-${S.circs.length+1}`,type:'prise16',disj:16,sec:'2.5mm²'});renderCP();};
