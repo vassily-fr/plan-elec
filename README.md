@@ -1,6 +1,9 @@
 # PlanÉlec
 
 Outil de planification électrique résidentielle — fichier HTML unique, 100% local, sans dépendance externe.
+sauvegarde du fichier en local, possibilité de le charger a nouveau.
+disponible ici : https://vassily-fr.github.io/plan-elec/plan-electrique.html
+
 
 ---
 
