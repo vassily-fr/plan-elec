@@ -77,6 +77,7 @@
 .asgn-hdr{font-size:9px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--txt2);margin:10px 0 6px;padding-top:10px;border-top:1px solid var(--brd);}
 .arow{display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(42,42,56,.5);font-size:11px;}
 .arow:last-child{border-bottom:none;}
+.arow.arow-sel{background:rgba(91,140,255,.12);border-radius:4px;padding-left:4px;margin:0 -4px;border-bottom-color:transparent;outline:1px solid var(--acc2);}
 .adot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .aname{flex:1;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;}
 .asel{background:var(--surf3);border:1px solid var(--brd);border-radius:4px;color:var(--txt);font-family:'Syne',sans-serif;font-size:10px;padding:2px 4px;cursor:pointer;width:95px;}
@@ -333,7 +334,7 @@ function setupCV(){
   cv.addEventListener('mousedown',e=>{
     if(e.button!==0)return;
     const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;
-    if(S.tool==='select'){const el=elAt(x,y);if(el){S.drag=el;S.selEl=el;const xf=imgXf(lvl());const ec=w2c(xf,el.x,el.y);S.dragOff={x:x-ec.x,y:y-ec.y};}else S.selEl=null;render();}
+    if(S.tool==='select'){const el=elAt(x,y);if(el){S.drag=el;S.selEl=el;const xf=imgXf(lvl());const ec=w2c(xf,el.x,el.y);S.dragOff={x:x-ec.x,y:y-ec.y};}else S.selEl=null;render();selHighlight();}
     else if(S.tool==='wire'){S.wirePs.push(c2w(imgXf(lvl()),x,y));}
     else if(S.tool==='line'){const wp=c2w(imgXf(lvl()),x,y);if(!S.linePt){S.linePt=wp;}else{lvl().wires.push([S.linePt,wp]);S.linePt=null;render();upPanels();}}
     else if(S.tool==='scale'){if(!S.scaleS){S.scaleS={x1:x,y1:y};}else if(!S.scaleS.done){S.scaleS.x2=x;S.scaleS.y2=y;S.scaleS.done=true;document.getElementById('sMod').classList.add('show');setTimeout(()=>document.getElementById('sVal').focus(),50);}}
@@ -520,6 +521,15 @@ function autoAssign(){
   render();renderCP();
 }
 
+function selHighlight(){
+  const p=document.getElementById('pC');
+  if(!p||p.style.display==='none')return;
+  p.querySelectorAll('.arow').forEach(r=>r.classList.remove('arow-sel'));
+  if(!S.selEl)return;
+  const row=p.querySelector(`.arow[data-elid="${S.selEl.id}"]`);
+  if(row){row.classList.add('arow-sel');row.scrollIntoView({block:'nearest',behavior:'smooth'});}
+}
+
 function allElCnt(){let n=0;S.lvls.forEach(l=>l.els.forEach(el=>{if(el.type!=='tableau')n++;}));return n;}
 function esc(s){return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
@@ -582,7 +592,7 @@ function renderCP(){
         const col=cmap[c.id]||'#888';
         citems+=`<div class="cdd-item${String(c.id)===curVal?' sel':''}" data-val="${c.id}"><div class="cdd-item-dot" style="background:${col}"></div>${esc(c.name)}</div>`;
       });
-      h+=`<div class="arow">
+      h+=`<div class="arow" data-elid="${el.id}">
         <div class="adot" style="background:${t.color}"></div>
         <span class="aname">${t.label} #${i+1}</span>
         <div class="cdd" data-elid="${el.id}">
@@ -608,6 +618,7 @@ function renderCP(){
 
   // Bind custom dropdown events
   render();
+  selHighlight();
   p.querySelectorAll('.cdd').forEach(cdd=>{
     const eid=cdd.dataset.elid;
     const trg=cdd.querySelector('.cdd-trg');
