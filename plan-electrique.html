@@ -97,6 +97,9 @@
 .cdd-item-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .cdf-err{border-color:var(--acc3)!important;background:rgba(255,107,107,.06)!important;}
 .cdf-warn{border-color:var(--orn)!important;}
+.cdf-hidden{opacity:.38;}
+.ceye{background:transparent;border:none;color:var(--txt2);cursor:pointer;padding:1px 4px;border-radius:3px;flex-shrink:0;line-height:1;display:flex;align-items:center;}
+.ceye:hover{color:var(--txt);background:var(--surf);}
 .cc{background:var(--surf2);border:1px solid var(--acc3);border-radius:var(--r);padding:10px;margin-top:6px;}
 .cc h4{font-size:11px;font-weight:700;color:var(--acc3);margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;}
 .cc .cd{font-size:11px;color:var(--txt2);line-height:1.9;}
@@ -143,6 +146,7 @@
   <div class="hs"></div>
   <button class="hbt" id="bSave">💾 Sauvegarder</button>
   <button class="hbt" id="bLoad">📂 Charger</button>
+  <button class="hbt" id="bLoadNew" style="display:none" title="Ouvrir un autre fichier">📂</button>
   <input type="file" id="jIn" accept=".json" style="display:none">
 </div>
 <div id="body">
@@ -214,8 +218,9 @@
 <div id="ctx">
   <button id="ctxRot">🔄 Pivoter 45°</button>
   <button id="ctxDup">📋 Dupliquer</button>
-  <hr>
+  <hr id="ctxHrEl">
   <button id="ctxDel" class="d">🗑 Supprimer</button>
+  <button id="ctxWireDel" class="d" style="display:none">🗑 Supprimer gaine</button>
   <hr><button id="ctxX">Fermer</button>
 </div>
 <div id="tip"></div>
@@ -246,10 +251,12 @@ const S={
   lvls:[],curLvl:0,scale:null,
   tool:'select',drag:null,dragOff:{x:0,y:0},
   wirePs:[],linePt:null,scaleS:null,
-  selEl:null,ctxEl:null,mx:0,my:0,
+  selEl:null,ctxEl:null,ctxWireIdx:-1,mx:0,my:0,
   fileHandle:null, // FileSystemFileHandle si fichier ouvert
   circs:[],   // {id,name,disj,sec,type}
   assgn:{},   // elId -> circId
+  hiddenCircs:{}, // circId -> true
+  selWire:-1,  // index into lvl().wires (-1 = none)
   cfg:{margin:10,maxP16:8,maxLum:8}
 };
 const CC=['#5b8cff','#5ddb8e','#ff9a3c','#e879f9','#f0c040','#4ecdc4','#ff85a1','#a3e635'];
@@ -269,7 +276,7 @@ function c2w(xf,cx,cy){return{x:(cx-xf.ox)/xf.sc,y:(cy-xf.oy)/xf.sc};}
 
 // ═══════ LEVELS ═══════
 function addLvl(name){S.lvls.push({id:Date.now()+Math.random(),name:name||('Étage '+S.lvls.length),img:null,els:[],wires:[]});S.curLvl=S.lvls.length-1;rLvlTabs();}
-function switchLvl(i){S.curLvl=i;S.wirePs=[];S.linePt=null;S.selEl=null;rLvlTabs();render();upPanels();}
+function switchLvl(i){S.curLvl=i;S.wirePs=[];S.linePt=null;S.selEl=null;S.selWire=-1;S.ctxWireIdx=-1;rLvlTabs();render();upPanels();}
 function delCurLvl(){if(S.lvls.length<=1){alert('Impossible de supprimer le seul étage.');return;}S.lvls.splice(S.curLvl,1);S.curLvl=Math.min(S.curLvl,S.lvls.length-1);rLvlTabs();render();upPanels();}
 function rLvlTabs(){const c=document.getElementById('lvlt');c.innerHTML='';S.lvls.forEach((l,i)=>{const b=document.createElement('button');b.className='lbt'+(i===S.curLvl?' on':'');b.textContent=l.name;b.ondblclick=()=>{const n=prompt('Nom:',l.name);if(n)l.name=n;rLvlTabs();};b.onclick=()=>switchLvl(i);c.appendChild(b);});}
 const lvl=()=>S.lvls[S.curLvl];
@@ -334,7 +341,12 @@ function setupCV(){
   cv.addEventListener('mousedown',e=>{
     if(e.button!==0)return;
     const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;
-    if(S.tool==='select'){const el=elAt(x,y);if(el){S.drag=el;S.selEl=el;const xf=imgXf(lvl());const ec=w2c(xf,el.x,el.y);S.dragOff={x:x-ec.x,y:y-ec.y};}else S.selEl=null;render();selHighlight();}
+    if(S.tool==='select'){
+      const el=elAt(x,y);
+      if(el){S.drag=el;S.selEl=el;S.selWire=-1;const xf=imgXf(lvl());const ec=w2c(xf,el.x,el.y);S.dragOff={x:x-ec.x,y:y-ec.y};}
+      else{const wi=wireAt(x,y);S.selWire=wi;S.selEl=null;}
+      render();selHighlight();
+    }
     else if(S.tool==='wire'){S.wirePs.push(c2w(imgXf(lvl()),x,y));}
     else if(S.tool==='line'){const wp=c2w(imgXf(lvl()),x,y);if(!S.linePt){S.linePt=wp;}else{lvl().wires.push([S.linePt,wp]);S.linePt=null;render();upPanels();}}
     else if(S.tool==='scale'){if(!S.scaleS){S.scaleS={x1:x,y1:y};}else if(!S.scaleS.done){S.scaleS.x2=x;S.scaleS.y2=y;S.scaleS.done=true;document.getElementById('sMod').classList.add('show');setTimeout(()=>document.getElementById('sVal').focus(),50);}}
@@ -344,17 +356,36 @@ function setupCV(){
   cv.addEventListener('contextmenu',e=>{
     e.preventDefault();const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;
     if(S.tool==='wire'){if(S.wirePs.length>=2)finWire();else S.wirePs=[];render();return;}
-    const el=elAt(x,y);if(el){S.ctxEl=el;showCtx(e.clientX,e.clientY);}
+    const el=elAt(x,y);
+    if(el){
+      S.ctxEl=el;S.selWire=-1;
+      ['ctxRot','ctxDup','ctxHrEl','ctxDel'].forEach(id=>document.getElementById(id).style.display='');
+      document.getElementById('ctxWireDel').style.display='none';
+      showCtx(e.clientX,e.clientY);
+    } else {
+      const wi=wireAt(x,y);
+      if(wi>=0){
+        S.ctxWireIdx=wi;S.selWire=wi;render();
+        ['ctxRot','ctxDup','ctxHrEl','ctxDel'].forEach(id=>document.getElementById(id).style.display='none');
+        document.getElementById('ctxWireDel').style.display='';
+        showCtx(e.clientX,e.clientY);
+      }
+    }
   });
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'){S.wirePs=[];S.linePt=null;S.scaleS=null;hideCtx();render();}
     if(e.key==='Enter'&&S.tool==='wire'&&S.wirePs.length>=2)finWire();
-    if((e.key==='Delete'||e.key==='Backspace')&&S.selEl&&!e.target.matches('input,select,textarea'))delEl(S.selEl);
+    if((e.key==='Delete'||e.key==='Backspace')&&!e.target.matches('input,select,textarea')){
+      if(S.selEl)delEl(S.selEl);
+      else if(S.selWire>=0){const wires=lvl().wires;if(S.selWire<wires.length)wires.splice(S.selWire,1);S.selWire=-1;render();upPanels();}
+    }
   });
 }
 
 function finWire(){if(S.wirePs.length<2){S.wirePs=[];render();return;}lvl().wires.push([...S.wirePs]);S.wirePs=[];render();upPanels();}
 function elAt(cx,cy){const xf=imgXf(lvl());const els=lvl().els;for(let i=els.length-1;i>=0;i--){const e=els[i];const ec=w2c(xf,e.x,e.y);const dx=ec.x-cx,dy=ec.y-cy;if(dx*dx+dy*dy<=400)return e;}return null;}
+function ptSegDist(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay;const t=dx*dx+dy*dy;if(t===0)return Math.sqrt((px-ax)**2+(py-ay)**2);const u=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/t));return Math.sqrt((px-ax-u*dx)**2+(py-ay-u*dy)**2);}
+function wireAt(cx,cy){const xf=imgXf(lvl());const wires=lvl().wires;for(let i=wires.length-1;i>=0;i--){const cp=wires[i].map(p=>w2c(xf,p.x,p.y));for(let j=1;j<cp.length;j++){if(ptSegDist(cx,cy,cp[j-1].x,cp[j-1].y,cp[j].x,cp[j].y)<=8)return i;}}return -1;}
 function placeEl(type,cx,cy){const xf=imgXf(lvl());const {x,y}=c2w(xf,cx,cy);const el={id:Date.now()+Math.random(),type,x,y,rot:0};lvl().els.push(el);render();upPanels();}
 function delEl(el){const l=lvl();l.els=l.els.filter(e=>e.id!==el.id);delete S.assgn[el.id];S.selEl=null;render();upPanels();}
 
@@ -412,11 +443,24 @@ function render(){
   const cmap={};S.circs.forEach((c,i)=>cmap[c.id]=CC[i%CC.length]);
   const xf=imgXf(l);
 
-  l.wires.forEach(w=>{
+  l.wires.forEach((w,wi)=>{
     const cp=w.map(p=>w2c(xf,p.x,p.y));
-    ctx.beginPath();ctx.strokeStyle='#ff9a3c';ctx.lineWidth=2;ctx.setLineDash([]);
+    // Color wire by closest assigned outlet (within 35px)
+    let wColor='#ff9a3c';let best=Infinity;
+    l.els.forEach(el=>{
+      if(el.type==='tableau')return;
+      const cid=String(S.assgn[el.id]||'');if(!cid)return;
+      const col=cmap[cid];if(!col)return;
+      const ec=w2c(xf,el.x,el.y);
+      for(let j=1;j<cp.length;j++){const d=ptSegDist(ec.x,ec.y,cp[j-1].x,cp[j-1].y,cp[j].x,cp[j].y);if(d<best){best=d;if(d<35)wColor=col;}}
+    });
+    const isSel=(wi===S.selWire);
+    ctx.beginPath();
+    ctx.strokeStyle=isSel?'rgba(255,255,255,.95)':wColor;
+    ctx.lineWidth=isSel?3.5:2;ctx.setLineDash(isSel?[6,3]:[]);
     ctx.moveTo(cp[0].x,cp[0].y);for(let i=1;i<cp.length;i++)ctx.lineTo(cp[i].x,cp[i].y);
-    ctx.stroke();cp.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,2.5,0,Math.PI*2);ctx.fillStyle='#ff9a3c';ctx.fill();});
+    ctx.stroke();ctx.setLineDash([]);
+    cp.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,2.5,0,Math.PI*2);ctx.fillStyle=isSel?'rgba(255,255,255,.95)':wColor;ctx.fill();});
   });
 
   if(S.tool==='wire'&&S.wirePs.length>0){
@@ -434,7 +478,7 @@ function render(){
   }
   if(S.scaleS){ctx.beginPath();ctx.strokeStyle='#f0c04099';ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.moveTo(S.scaleS.x1,S.scaleS.y1);if(S.scaleS.done)ctx.lineTo(S.scaleS.x2,S.scaleS.y2);else ctx.lineTo(S.mx,S.my);ctx.stroke();ctx.setLineDash([]);}
 
-  l.els.forEach(el=>{const cp=w2c(xf,el.x,el.y);drawEl(el.type,cp.x,cp.y,el.rot,el===S.selEl,cmap[S.assgn[el.id]]||null);});
+  l.els.forEach(el=>{if(S.hiddenCircs[String(S.assgn[el.id])])return;const cp=w2c(xf,el.x,el.y);drawEl(el.type,cp.x,cp.y,el.rot,el===S.selEl,cmap[S.assgn[el.id]]||null);});
 }
 
 // ═══════ SCALE MODAL ═══════
@@ -454,6 +498,11 @@ function setupCtx(){
   document.getElementById('ctxRot').onclick=()=>{if(S.ctxEl){S.ctxEl.rot=(S.ctxEl.rot+45)%360;render();}hideCtx();};
   document.getElementById('ctxDup').onclick=()=>{if(S.ctxEl)placeEl(S.ctxEl.type,S.ctxEl.x+22,S.ctxEl.y+22);hideCtx();};
   document.getElementById('ctxDel').onclick=()=>{if(S.ctxEl)delEl(S.ctxEl);hideCtx();};
+  document.getElementById('ctxWireDel').onclick=()=>{
+    const wires=lvl().wires;
+    if(S.ctxWireIdx>=0&&S.ctxWireIdx<wires.length){wires.splice(S.ctxWireIdx,1);S.selWire=-1;S.ctxWireIdx=-1;render();upPanels();}
+    hideCtx();
+  };
   document.getElementById('ctxX').onclick=hideCtx;
   document.addEventListener('click',e=>{if(!e.target.closest('#ctx'))hideCtx();if(!e.target.closest('.cdd'))document.querySelectorAll('.cdd-menu.open').forEach(m=>m.classList.remove('open'));});
 }
@@ -481,6 +530,9 @@ function upPanels(){renderBP();if(document.getElementById('pC').style.display!==
 
 function renderBP(){
   const cnt=countAll(),wm=wireMtrs(),mg=1+S.cfg.margin/100;let h='';
+  // Unassigned warning
+  let unassigned=0;S.lvls.forEach(lv=>lv.els.forEach(el=>{if(el.type!=='tableau'&&!S.assgn[el.id])unassigned++;}));
+  if(unassigned>0)h+=`<div class="si si-ko" style="display:block">⚠ ${unassigned} élément(s) sans réseau assigné &mdash; allez dans l'onglet Circuits</div>`;
   h+=S.scale?`<div class="si si-ok" style="display:block">✓ Échelle définie : 1m = ${S.scale.toFixed(0)}px</div>`:`<div class="si si-ko" style="display:block">⚠ Échelle non définie — longueurs non calculées</div>`;
   const grps=[{t:'Prises',k:['prise16','prise_double','prise20']},{t:'Interrupteurs',k:['inter_simple','inter_double']},{t:'Éclairage',k:['luminaire','applique']},{t:'Infrastructure',k:['tableau']}];
   grps.forEach(g=>{h+=`<div class="bg"><h4>${g.t}</h4>`;g.k.forEach(k=>{const n=cnt[k]||0;h+=`<div class="br"><span class="lb"><span style="color:${T[k].color}">●</span>${T[k].label}</span><span class="cnt${n===0?' z':''}">${n}</span></div>`;});h+='</div>';});
@@ -557,20 +609,27 @@ function renderCP(){
       let pts=assignedEls.reduce((s,el)=>s+(el.type==='prise_double'?2:1),0);
       const maxPts=c.type==='prise20'?1:c.type==='lumiere'?S.cfg.maxLum:S.cfg.maxP16;
       const over=pts>maxPts,atLim=pts===maxPts;
-      const stCls=over?'cdf-err':atLim?'cdf-warn':'';
+      const isHidden=!!S.hiddenCircs[cid];
+      const stCls=(over?'cdf-err':atLim?'cdf-warn':'')+(isHidden?' cdf-hidden':'');
+      const nbDbl=assignedEls.filter(el=>el.type==='prise_double').length;
+      const dblNote=nbDbl>0?` <span style="color:var(--txt2);font-size:9px">(dont ${nbDbl} doubles)</span>`:'';
       const stHtml=over
-        ?`<span style="color:var(--acc3)">⚠ ${pts}/${maxPts}pts DÉPASSEMENT</span>`
+        ?`<span style="color:var(--acc3)">⚠ ${pts}/${maxPts} socles DÉPASSEMENT</span>`
         :atLim
-        ?`<span style="color:var(--orn)">⚠ ${pts}/${maxPts}pts limite</span>`
-        :`<span style="color:var(--txt2)">${pts}/${maxPts}pts</span>`;
+        ?`<span style="color:var(--orn)">⚠ ${pts}/${maxPts} socles limite</span>`
+        :`<span style="color:var(--txt2)">${pts}/${maxPts} socles</span>`;
       h+=`<div class="cdf ${stCls}">
         <div class="cdft">
           <div style="width:10px;height:10px;border-radius:50%;background:${cmap[c.id]||'#888'};flex-shrink:0;"></div>
           <input class="cdfn" value="${esc(c.name)}" data-cid="${c.id}">
           <span class="bdg ${bc}">${c.disj}A</span>
+          <button class="ceye" data-cid="${c.id}" title="${isHidden?'Afficher':'Masquer'} ce réseau">${isHidden
+            ?`<svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M2 2l16 16"/><path d="M6.7 6.8C4.6 8 3 10 3 10s3.1 4.5 7 4.5c1.3 0 2.5-.4 3.5-1"/><path d="M10 5.5c3.9 0 7 4.5 7 4.5s-.6.9-1.7 1.9"/><circle cx="10" cy="10" r="2.5"/></svg>`
+            :`<svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 10s3.1-4.5 7-4.5S17 10 17 10s-3.1 4.5-7 4.5S3 10 3 10z"/><circle cx="10" cy="10" r="2.5"/></svg>`
+          }</button>
           <button class="cdel" data-cid="${c.id}">✕</button>
         </div>
-        <div style="font-size:10px;color:var(--txt2)">Section: <strong style="color:var(--txt)">${c.sec}</strong> · <strong style="color:var(--txt)">${nb}</strong> él. · ${stHtml}</div>
+        <div style="font-size:10px;color:var(--txt2)">Section: <strong style="color:var(--txt)">${c.sec}</strong> · <strong style="color:var(--txt)">${nb}</strong> él.${dblNote} · ${stHtml}</div>
       </div>`;
     });
   }
@@ -579,29 +638,53 @@ function renderCP(){
   h+=`<button class="badd" id="bAddP20">+ Circuit prise 20A spécialisée</button>`;
   h+=`<button class="badd" id="bAddLum">+ Circuit éclairage 10A (1.5mm²)</button>`;
 
-  // Assignment section
+  // Assignment section — grouped by circuit
   h+=`<div class="asgn-hdr">Assignation des éléments</div>`;
-  S.lvls.forEach(lv=>{
-    if(S.lvls.length>1)h+=`<div style="font-size:9px;color:var(--txt2);margin:5px 0 3px;font-weight:700;text-transform:uppercase;letter-spacing:1px">${esc(lv.name)}</div>`;
-    lv.els.filter(el=>el.type!=='tableau').forEach((el,i)=>{
-      const t=T[el.type];const curVal=String(S.assgn[el.id]||'');
-      const selC=S.circs.find(c=>String(c.id)===curVal);
-      const dotColor=selC?(cmap[selC.id]||'#888'):'';
-      let citems=`<div class="cdd-item${!curVal?' sel':''}" data-val="">— libre —</div>`;
-      S.circs.forEach(c=>{
-        const col=cmap[c.id]||'#888';
-        citems+=`<div class="cdd-item${String(c.id)===curVal?' sel':''}" data-val="${c.id}"><div class="cdd-item-dot" style="background:${col}"></div>${esc(c.name)}</div>`;
-      });
-      h+=`<div class="arow" data-elid="${el.id}">
-        <div class="adot" style="background:${t.color}"></div>
-        <span class="aname">${t.label} #${i+1}</span>
-        <div class="cdd" data-elid="${el.id}">
-          <div class="cdd-trg" tabindex="0"><div class="cdd-trg-dot" style="background:${dotColor};${selC?'':'visibility:hidden;'}"></div><span class="cdd-trg-lbl">${selC?esc(selC.name):'— libre —'}</span><span class="cdd-trg-arr">▾</span></div>
-          <div class="cdd-menu">${citems}</div>
-        </div>
-      </div>`;
-    });
+
+  // 1) Pre-compute per-type labels (stable across grouping)
+  const elLabels={};const elTypeIdx={};
+  S.lvls.forEach(lv=>lv.els.filter(el=>el.type!=='tableau').forEach(el=>{
+    elTypeIdx[el.type]=(elTypeIdx[el.type]||0)+1;
+    elLabels[el.id]=`${T[el.type].label} #${elTypeIdx[el.type]}`;
+  }));
+
+  // 2) Group elements by assigned circuit
+  const circGroups={};S.circs.forEach(c=>circGroups[String(c.id)]=[]);
+  const freeEls=[];
+  S.lvls.forEach(lv=>lv.els.filter(el=>el.type!=='tableau').forEach(el=>{
+    const cv=String(S.assgn[el.id]||'');
+    if(cv&&circGroups[cv]!==undefined)circGroups[cv].push(el);
+    else freeEls.push(el);
+  }));
+
+  // 3) Helper: build dropdown for one element
+  const mkDrop=(el)=>{
+    const cv=String(S.assgn[el.id]||'');
+    const selC=S.circs.find(c=>String(c.id)===cv);
+    const dc=selC?(cmap[selC.id]||'#888'):'';
+    let ci=`<div class="cdd-item${!cv?' sel':''}" data-val="">— libre —</div>`;
+    S.circs.forEach(c=>{const col=cmap[c.id]||'#888';ci+=`<div class="cdd-item${String(c.id)===cv?' sel':''}" data-val="${c.id}"><div class="cdd-item-dot" style="background:${col}"></div>${esc(c.name)}</div>`;});
+    return `<div class="cdd" data-elid="${el.id}"><div class="cdd-trg" tabindex="0"><div class="cdd-trg-dot" style="background:${dc};${selC?'':'visibility:hidden;'}"></div><span class="cdd-trg-lbl">${selC?esc(selC.name):'— libre —'}</span><span class="cdd-trg-arr">▾</span></div><div class="cdd-menu">${ci}</div></div>`;
+  };
+
+  // 4) Render one element row
+  const mkRow=(el)=>`<div class="arow" data-elid="${el.id}"><div class="adot" style="background:${T[el.type].color}"></div><span class="aname">${elLabels[el.id]}</span>${mkDrop(el)}</div>`;
+
+  // 5) Render groups
+  S.circs.forEach(c=>{
+    const cid=String(c.id);const els=circGroups[cid]||[];
+    const col=cmap[c.id]||'#888';
+    h+=`<div style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:5px;padding:3px 0 4px;border-bottom:1px solid ${col}44;margin-bottom:2px"><div style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0"></div><span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:${col}">${esc(c.name)}</span><span style="font-size:9px;color:var(--txt2);margin-left:auto">${els.length} él.</span></div>`;
+    if(els.length===0)h+=`<div style="font-size:10px;color:var(--txt2);padding:3px 0 2px 12px;font-style:italic">Aucun élément</div>`;
+    else els.forEach(el=>h+=mkRow(el));
+    h+=`</div>`;
   });
+
+  if(freeEls.length>0){
+    h+=`<div style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:5px;padding:3px 0 4px;border-bottom:1px solid var(--brd);margin-bottom:2px"><div style="width:7px;height:7px;border-radius:50%;background:var(--txt2);flex-shrink:0"></div><span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--txt2)">Non assignés</span><span style="font-size:9px;color:var(--acc3);margin-left:auto">${freeEls.length} él.</span></div>`;
+    freeEls.forEach(el=>h+=mkRow(el));
+    h+=`</div>`;
+  }
 
   // Tableau summary
   const dmap={};S.circs.forEach(c=>{const k=c.disj+'|'+c.sec;if(!dmap[k])dmap[k]={amp:c.disj,sec:c.sec,nb:0};dmap[k].nb++;});
@@ -645,7 +728,8 @@ function renderCP(){
     inp.oninput=()=>{const c=S.circs.find(x=>String(x.id)===inp.dataset.cid);if(c)c.name=inp.value;};
     inp.onblur=()=>renderCP();
   });
-  p.querySelectorAll('.cdel').forEach(btn=>{btn.onclick=()=>{const cid=btn.dataset.cid;S.circs=S.circs.filter(c=>String(c.id)!==cid);Object.keys(S.assgn).forEach(k=>{if(String(S.assgn[k])===cid)delete S.assgn[k];});render();renderCP();};});
+  p.querySelectorAll('.ceye').forEach(btn=>{btn.onclick=()=>{const cid=btn.dataset.cid;if(S.hiddenCircs[cid])delete S.hiddenCircs[cid];else S.hiddenCircs[cid]=true;render();renderCP();};});
+  p.querySelectorAll('.cdel').forEach(btn=>{btn.onclick=()=>{const cid=btn.dataset.cid;S.circs=S.circs.filter(c=>String(c.id)!==cid);Object.keys(S.assgn).forEach(k=>{if(String(S.assgn[k])===cid)delete S.assgn[k];});delete S.hiddenCircs[cid];render();renderCP();};});
   document.getElementById('bAuto').onclick=()=>{if(confirm('Répartition auto NF C 15-100 ? Les assignations actuelles seront écrasées.'))autoAssign();};
   document.getElementById('bAddP16').onclick=()=>{S.circs.push({id:Date.now()+Math.random(),name:`Prises 16A-${S.circs.length+1}`,type:'prise16',disj:16,sec:'2.5mm²'});renderCP();};
   document.getElementById('bAddP20').onclick=()=>{S.circs.push({id:Date.now()+Math.random(),name:`Prise 20A-${S.circs.length+1}`,type:'prise20',disj:20,sec:'2.5mm²'});renderCP();};
@@ -671,11 +755,17 @@ function setupSettings(){
   p.querySelector('#sL').oninput=e=>{S.cfg.maxLum=+e.target.value;p.querySelector('#vL').textContent=S.cfg.maxLum;upPanels();};
 }
 
+// ═══════ IDB FILE HANDLE PERSISTENCE ═══════
+const IDB_NAME='planelec',IDB_STORE='handles';
+function openIDB(){return new Promise((res,rej)=>{const r=indexedDB.open(IDB_NAME,1);r.onupgradeneeded=e=>e.target.result.createObjectStore(IDB_STORE);r.onsuccess=e=>res(e.target.result);r.onerror=rej;});}
+async function idbPut(key,val){try{const db=await openIDB();await new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).put(val,key);tx.oncomplete=()=>{db.close();res();};tx.onerror=rej;});}catch(e){}}
+async function idbGet(key){try{const db=await openIDB();return await new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readonly');const r=tx.objectStore(IDB_STORE).get(key);r.onsuccess=()=>{db.close();res(r.result);};r.onerror=rej;});}catch(e){return null;}}
+
 // ═══════ HEADER ═══════
-function projectData(){return {v:3,scale:S.scale,cfg:S.cfg,circs:S.circs,assgn:S.assgn,lvls:S.lvls};}
+function projectData(){return {v:3,scale:S.scale,cfg:S.cfg,circs:S.circs,assgn:S.assgn,hiddenCircs:S.hiddenCircs,lvls:S.lvls};}
 function loadData(d){
   if(d.v!==3){alert('Format de fichier non compatible avec cette version du logiciel.\nVeuillez recommencer un nouveau projet.');return;}
-  S.scale=d.scale;S.cfg={...S.cfg,...d.cfg};S.circs=d.circs||[];S.assgn=d.assgn||{};S.lvls=d.lvls;S.curLvl=0;
+  S.scale=d.scale;S.cfg={...S.cfg,...d.cfg};S.circs=d.circs||[];S.assgn=d.assgn||{};S.hiddenCircs=d.hiddenCircs||{};S.lvls=d.lvls;S.curLvl=0;
   Object.keys(bgC).forEach(k=>delete bgC[k]);rLvlTabs();render();setupSettings();upPanels();
 }
 
@@ -695,6 +785,7 @@ async function saveProject(){
       S.fileHandle=await window.showSaveFilePicker({suggestedName:'plan-electrique.json',types:[{description:'Projet PlanÉlec',accept:{'application/json':['.json']}}]});
       const w=await S.fileHandle.createWritable();
       await w.write(json);await w.close();
+      await idbPut('lastHandle',S.fileHandle);
       flashSave();upHdrTitle();
       return;
     }catch(e){if(e.name==='AbortError')return;console.error(e);}
@@ -711,9 +802,20 @@ function flashSave(){
 }
 
 function upHdrTitle(){
-  const btn=document.getElementById('bSave');
-  if(S.fileHandle)btn.title='Sauvegarder dans '+S.fileHandle.name+' (Ctrl+S)';
-  else btn.title='Sauvegarder (Ctrl+S)';
+  const bSave=document.getElementById('bSave');
+  const bLoad=document.getElementById('bLoad');
+  const bLoadNew=document.getElementById('bLoadNew');
+  if(S.fileHandle){
+    bSave.title='Sauvegarder dans '+S.fileHandle.name+' (Ctrl+S)';
+    bLoad.textContent='↺ '+S.fileHandle.name;
+    bLoad.title='Recharger '+S.fileHandle.name;
+    bLoadNew.style.display='';
+  } else {
+    bSave.title='Sauvegarder (Ctrl+S)';
+    bLoad.textContent='📂 Charger';
+    bLoad.title='Charger un projet';
+    bLoadNew.style.display='none';
+  }
 }
 
 function setupHdr(){
@@ -721,11 +823,12 @@ function setupHdr(){
   document.getElementById('bDelLvl').onclick=delCurLvl;
   document.getElementById('bSave').onclick=saveProject;
   // Charger : File System Access API si dispo, sinon input classic
-  document.getElementById('bLoad').onclick=async()=>{
+  const doOpenPicker=async()=>{
     if(window.showOpenFilePicker){
       try{
         const [handle]=await window.showOpenFilePicker({types:[{description:'Projet PlanÉlec',accept:{'application/json':['.json']}}]});
         S.fileHandle=handle;
+        await idbPut('lastHandle',handle);
         const file=await handle.getFile();
         const text=await file.text();
         loadData(JSON.parse(text));
@@ -735,6 +838,21 @@ function setupHdr(){
       document.getElementById('jIn').click();
     }
   };
+  document.getElementById('bLoad').onclick=async()=>{
+    if(S.fileHandle){
+      try{
+        const perm=await S.fileHandle.queryPermission({mode:'read'});
+        const granted=perm==='granted'||(await S.fileHandle.requestPermission({mode:'read'})==='granted');
+        if(!granted)return;
+        const file=await S.fileHandle.getFile();
+        loadData(JSON.parse(await file.text()));
+        upHdrTitle();
+      }catch(e){alert('Erreur: '+e.message);}
+    } else {
+      await doOpenPicker();
+    }
+  };
+  document.getElementById('bLoadNew').onclick=doOpenPicker;
   document.getElementById('jIn').onchange=e=>{
     const f=e.target.files[0];if(!f)return;
     S.fileHandle=null; // input classique ne donne pas de handle
@@ -752,10 +870,18 @@ function setupHdr(){
 }
 
 // ═══════ START ═══════
-function init(){
+async function init(){
   addLvl('RDC');
   setupTB();setupCV();setupPTabs();setupSettings();setupCtx();setupHdr();
   setTool('select');resCV();upPanels();
+  // Try to restore last file handle from IndexedDB
+  try{
+    const h=await idbGet('lastHandle');
+    if(h&&h.kind==='file'){
+      const perm=await h.queryPermission({mode:'read'});
+      if(perm==='granted'){S.fileHandle=h;upHdrTitle();}
+    }
+  }catch(e){}
 }
 init();
 </script>
