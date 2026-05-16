@@ -135,6 +135,7 @@
 .bno{padding:6px 16px;background:transparent;color:var(--txt2);border:1px solid var(--brd);border-radius:var(--r);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
 .crouteye{background:transparent;border:none;color:var(--txt2);cursor:pointer;padding:1px 4px;border-radius:3px;flex-shrink:0;line-height:1;display:flex;align-items:center;}.crouteye:hover{color:var(--txt);background:var(--surf);}
 .ctrace{background:transparent;border:none;cursor:pointer;padding:1px 4px;border-radius:3px;flex-shrink:0;line-height:1;display:flex;align-items:center;}.ctrace:hover{background:var(--surf);}
+.mep-sel{background:var(--surf2);border:1px solid var(--brd);border-radius:4px;color:var(--txt);padding:3px 7px;font-family:'Syne',sans-serif;font-size:11px;cursor:pointer;outline:none;}.mep-sel:focus{border-color:var(--acc2);}
 </style>
 </head>
 <body>
@@ -191,6 +192,11 @@
       <div class="ei"><svg viewBox="0 0 26 26" width="26" height="26"><rect x="3" y="5" width="20" height="16" rx="2" fill="none" stroke="#fb923c" stroke-width="1.5"/><polygon points="13,7 16,11 10,11" fill="#fb923c"/><line x1="13" y1="11" x2="13" y2="15" stroke="#fb923c" stroke-width="1"/><polygon points="13,19 16,15 10,15" fill="#fb923c" opacity="0.5"/></svg></div>Inter. volet
     </div>
   </div>
+  <div class="ts"><h3>Réseau</h3>
+    <div class="eb" draggable="true" data-type="prise_rj45">
+      <div class="ei"><svg viewBox="0 0 26 26" width="26" height="26"><rect x="3" y="3" width="20" height="20" rx="2" fill="none" stroke="#34d399" stroke-width="1.5"/><rect x="7" y="8" width="12" height="8" rx="1" fill="none" stroke="#34d399" stroke-width="1.2"/><line x1="9" y1="10" x2="9" y2="16" stroke="#34d399" stroke-width="0.9"/><line x1="11" y1="10" x2="11" y2="16" stroke="#34d399" stroke-width="0.9"/><line x1="13" y1="10" x2="13" y2="16" stroke="#34d399" stroke-width="0.9"/><line x1="15" y1="10" x2="15" y2="16" stroke="#34d399" stroke-width="0.9"/><line x1="17" y1="10" x2="17" y2="16" stroke="#34d399" stroke-width="0.9"/><text x="13" y="24" text-anchor="middle" font-size="4.5" fill="#34d399" font-family="sans-serif" font-weight="bold">NET</text></svg></div>Prise réseau
+    </div>
+  </div>
   <div class="ts"><h3>Infrastructure</h3>
     <div class="eb" draggable="true" data-type="tableau">
       <div class="ei"><svg viewBox="0 0 26 26" width="26" height="26"><rect x="2" y="3" width="22" height="20" rx="2" fill="none" stroke="#ff6b6b" stroke-width="1.5"/><line x1="2" y1="9" x2="24" y2="9" stroke="#ff6b6b" stroke-width="1"/><rect x="5" y="12" width="4" height="7" rx="1" fill="#ff6b6b" opacity=".5"/><rect x="11" y="12" width="4" height="7" rx="1" fill="#ff6b6b" opacity=".3"/><rect x="17" y="12" width="4" height="7" rx="1" fill="#ff6b6b" opacity=".2"/></svg></div>Tableau élec
@@ -215,6 +221,7 @@
   <div class="fh fhl" id="fhL">Ligne droite: 1er clic départ → 2e clic arrivée</div>
   <div class="fh fhs" id="fhS">Tracez une ligne sur le plan pour définir l'échelle</div>
   <div id="ib"></div>
+  <div id="mep" style="position:absolute;bottom:13px;left:13px;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);padding:7px 11px;display:none;align-items:center;gap:8px;font-size:11px;z-index:40;white-space:nowrap;"><span style="color:var(--txt2);font-weight:700">Mécaniques :</span><select id="mep1" class="mep-sel"></select><span style="color:var(--txt2)">+</span><select id="mep2" class="mep-sel"></select></div>
 </div>
 <div id="rp">
   <div class="pts">
@@ -261,6 +268,7 @@ const T={
   volet_roulant:{label:'Volet roulant',color:'#a78bfa',cat:'volet',amp:10,sec:'1.5mm²'},
   volet_battant:{label:'Volet battant',color:'#818cf8',cat:'volet',amp:10,sec:'1.5mm²'},
   inter_volet:{label:'Inter. volet',color:'#fb923c',cat:'inter_volet',amp:10,sec:'1.5mm²'},
+  prise_rj45:{label:'Prise réseau',color:'#34d399',cat:'reseau',amp:0,sec:'-'},
 };
 // ═══════ STATE ═══════
 const S={
@@ -436,25 +444,38 @@ function placeEl(type,cx,cy){pushHistory();const xf=imgXf(lvl());const {x,y}=c2w
 function delEl(el){pushHistory();const l=lvl();l.els=l.els.filter(e=>e.id!==el.id);delete S.assgn[el.id];S.selEl=null;render();upPanels();}
 
 // ═══════ RENDER ═══════
-function drawEl(type,x,y,rot,sel,circColor){
+function drawEl(type,x,y,rot,sel,circColor,meca1,meca2){
   const t=T[type];if(!t)return; // skip unknown types (old files)
   ctx.save();ctx.translate(x,y);ctx.rotate(rot*Math.PI/180);
   if(sel){ctx.beginPath();ctx.arc(0,0,16,0,Math.PI*2);ctx.fillStyle='rgba(240,192,64,.12)';ctx.fill();ctx.strokeStyle='#f0c040';ctx.lineWidth=1.5;ctx.stroke();}
   ctx.strokeStyle=t.color;ctx.fillStyle=t.color;ctx.lineWidth=1.5;
   switch(type){
     case 'prise16':ctx.beginPath();ctx.arc(0,0,9,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(-3,-2,1.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(3,-2,1.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(0,3,2.5,0,Math.PI);ctx.stroke();break;
-    case 'prise_double':
+    case 'prise_double':{
+      const dm1=meca1||'elec',dm2=meca2||'elec';
       ctx.beginPath();ctx.roundRect(-12,-8,24,16,2);ctx.stroke();
-      ctx.beginPath();ctx.arc(-6,0,4.5,0,Math.PI*2);ctx.stroke();
-      ctx.beginPath();ctx.arc(-7.5,-2,1.2,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(-4.5,-2,1.2,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.moveTo(-7.5,2.5);ctx.quadraticCurveTo(-6,4.5,-4.5,2.5);ctx.stroke();
       ctx.save();ctx.globalAlpha=0.35;ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(0,7);ctx.stroke();ctx.restore();
-      ctx.beginPath();ctx.arc(6,0,4.5,0,Math.PI*2);ctx.stroke();
-      ctx.beginPath();ctx.arc(4.5,-2,1.2,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(7.5,-2,1.2,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.moveTo(4.5,2.5);ctx.quadraticCurveTo(6,4.5,7.5,2.5);ctx.stroke();
-      break;
+      const drawSlot=(ox,m)=>{
+        if(m==='elec'){
+          ctx.lineWidth=1.5;ctx.strokeStyle=t.color;ctx.fillStyle=t.color;
+          ctx.beginPath();ctx.arc(ox,0,4.5,0,Math.PI*2);ctx.stroke();
+          ctx.beginPath();ctx.arc(ox-1.5,-2,1.2,0,Math.PI*2);ctx.fill();
+          ctx.beginPath();ctx.arc(ox+1.5,-2,1.2,0,Math.PI*2);ctx.fill();
+          ctx.beginPath();ctx.moveTo(ox-1.5,2.5);ctx.quadraticCurveTo(ox,4.5,ox+1.5,2.5);ctx.stroke();
+        }else if(m==='rj45'){
+          ctx.save();ctx.strokeStyle='#34d399';ctx.fillStyle='#34d399';ctx.lineWidth=1;
+          ctx.beginPath();ctx.roundRect(ox-4,-3.5,8,7,0.8);ctx.stroke();
+          for(let i=0;i<4;i++){const px=ox-3+i*2;ctx.beginPath();ctx.moveTo(px,-2);ctx.lineTo(px,3.5);ctx.stroke();}
+          ctx.restore();
+        }else if(m==='hdmi'){
+          ctx.save();ctx.strokeStyle='#fb7185';ctx.fillStyle='#fb7185';ctx.lineWidth=1;
+          ctx.beginPath();ctx.moveTo(ox-4.5,-3.5);ctx.lineTo(ox+4.5,-3.5);ctx.lineTo(ox+3,3.5);ctx.lineTo(ox-3,3.5);ctx.closePath();ctx.stroke();
+          ctx.globalAlpha=0.18;ctx.fill();ctx.globalAlpha=1;
+          ctx.restore();
+        }
+      };
+      drawSlot(-6,dm1);drawSlot(6,dm2);
+      break;}
     case 'prise20':ctx.beginPath();ctx.arc(0,0,9,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(-4,-2,1.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(4,-2,1.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(0,-2,1.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(0,3,2.5,0,Math.PI);ctx.stroke();break;
     case 'inter_simple':ctx.beginPath();ctx.roundRect(-9,-6,18,10,2);ctx.stroke();ctx.fillStyle=t.color+'77';ctx.beginPath();ctx.roundRect(-6,-3,12,4,1.5);ctx.fill();ctx.strokeStyle=t.color;ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(0,-6);ctx.stroke();break;
     case 'inter_double':ctx.beginPath();ctx.roundRect(-11,-6,22,10,2);ctx.stroke();ctx.fillStyle=t.color+'66';ctx.beginPath();ctx.roundRect(-9,-3,8,4,1.5);ctx.fill();ctx.fillStyle=t.color+'33';ctx.beginPath();ctx.roundRect(1,-3,8,4,1.5);ctx.fill();break;
@@ -500,6 +521,16 @@ function drawEl(type,x,y,rot,sel,circColor){
       ctx.globalAlpha=0.45;
       ctx.beginPath();ctx.moveTo(-4,1);ctx.lineTo(0,7);ctx.lineTo(4,1);ctx.closePath();ctx.fill();
       ctx.globalAlpha=1;
+      break;
+    case 'prise_rj45':
+      // plaque carrée
+      ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(-11,-11,22,22,2);ctx.stroke();
+      // corps RJ45
+      ctx.lineWidth=1.2;ctx.beginPath();ctx.roundRect(-7,-4,14,8,1);ctx.stroke();
+      // 5 broches
+      for(let i=0;i<5;i++){const px=-6+i*3;ctx.beginPath();ctx.moveTo(px,-2);ctx.lineTo(px,4);ctx.stroke();}
+      // label NET
+      ctx.font='bold 5px sans-serif';ctx.fillStyle=t.color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('NET',0,9);ctx.textBaseline='alphabetic';
       break;
   }
   ctx.restore();
@@ -555,7 +586,7 @@ function render(){
   }
   if(S.scaleS){ctx.beginPath();ctx.strokeStyle='#f0c04099';ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.moveTo(S.scaleS.x1,S.scaleS.y1);if(S.scaleS.done)ctx.lineTo(S.scaleS.x2,S.scaleS.y2);else ctx.lineTo(S.mx,S.my);ctx.stroke();ctx.setLineDash([]);}
 
-  l.els.forEach(el=>{if(S.hiddenCircs[String(S.assgn[el.id])])return;const cp=w2c(xf,el.x,el.y);drawEl(el.type,cp.x,cp.y,el.rot,el===S.selEl,cmap[S.assgn[el.id]]||null);});
+  l.els.forEach(el=>{if(S.hiddenCircs[String(S.assgn[el.id])])return;const cp=w2c(xf,el.x,el.y);drawEl(el.type,cp.x,cp.y,el.rot,el===S.selEl,cmap[S.assgn[el.id]]||null,el.meca1,el.meca2);});
 }
 
 // ═══════ SCALE MODAL ═══════
@@ -603,7 +634,7 @@ function setupPTabs(){
 function countAll(){const c={};Object.keys(T).forEach(k=>c[k]=0);S.lvls.forEach(l=>l.els.forEach(el=>c[el.type]++));return c;}
 function wireMtrs(){let px=0;S.lvls.forEach(l=>l.wires.forEach(w=>{const pts=w.pts||w;for(let i=1;i<pts.length;i++){const dx=pts[i].x-pts[i-1].x,dy=pts[i].y-pts[i-1].y;px+=Math.sqrt(dx*dx+dy*dy);}}));return S.scale?px/S.scale:null;}
 
-function upPanels(){renderBP();if(document.getElementById('pC').style.display!=='none')renderCP();}
+function upPanels(){renderBP();if(document.getElementById('pC').style.display!=='none')renderCP();selHighlight();}
 
 function renderBP(){
   const cnt=countAll(),wm=wireMtrs(),mg=1+S.cfg.margin/100;let h='';
@@ -611,8 +642,9 @@ function renderBP(){
   let unassigned=0;S.lvls.forEach(lv=>lv.els.forEach(el=>{if(el.type!=='tableau'&&!S.assgn[el.id])unassigned++;}));
   if(unassigned>0)h+=`<div class="si si-ko" style="display:block">⚠ ${unassigned} élément(s) sans réseau assigné &mdash; allez dans l'onglet Circuits</div>`;
   h+=S.scale?`<div class="si si-ok" style="display:block">✓ Échelle définie : 1m = ${S.scale.toFixed(0)}px</div>`:`<div class="si si-ko" style="display:block">⚠ Échelle non définie — longueurs non calculées</div>`;
-  const grps=[{t:'Prises',k:['prise16','prise_double','prise20']},{t:'Interrupteurs',k:['inter_simple','inter_double']},{t:'Éclairage',k:['luminaire','applique']},{t:'Volets',k:['volet_roulant','volet_battant','inter_volet']},{t:'Infrastructure',k:['tableau']}];
-  grps.forEach(g=>{h+=`<div class="bg"><h4>${g.t}</h4>`;g.k.forEach(k=>{const n=cnt[k]||0;h+=`<div class="br"><span class="lb"><span style="color:${T[k].color}">●</span>${T[k].label}</span><span class="cnt${n===0?' z':''}">${n}</span></div>`;});h+='</div>';});
+  const grps=[{t:'Prises',k:['prise16','prise_double','prise20']},{t:'Interrupteurs',k:['inter_simple','inter_double'],tot:true},{t:'Éclairage',k:['luminaire','applique']},{t:'Volets',k:['volet_roulant','volet_battant','inter_volet']},{t:'Réseau',k:['prise_rj45']},{t:'Infrastructure',k:['tableau']}];
+  grps.forEach(g=>{const gtot=g.k.reduce((s,k)=>s+(cnt[k]||0),0);h+=`<div class="bg"><h4>${g.t}${g.tot?` <span class="cnt" style="font-size:13px">${gtot}</span>`:''}</h4>`;g.k.forEach(k=>{const n=cnt[k]||0;h+=`<div class="br"><span class="lb"><span style="color:${T[k].color}">●</span>${T[k].label}</span><span class="cnt${n===0?' z':''}">${n}</span></div>`;});h+='</div>';});
+  if(cnt.prise_double>0){let mecaElec=0,mecaRj45=0,mecaHdmi=0;S.lvls.forEach(l=>l.els.filter(el=>el.type==='prise_double').forEach(el=>{const m1=el.meca1||'elec',m2=el.meca2||'elec';if(m1==='elec')mecaElec++;else if(m1==='rj45')mecaRj45++;else mecaHdmi++;if(m2==='elec')mecaElec++;else if(m2==='rj45')mecaRj45++;else mecaHdmi++;}));h+=`<div class="bg"><h4>Mécaniques <span style="color:var(--txt2);font-size:8px;font-weight:400;letter-spacing:0">prises doubles</span></h4><div class="br"><span class="lb"><span style="color:#c084fc">●</span>⚡ Électrique</span><span class="cnt${mecaElec===0?' z':''}">${mecaElec}</span></div><div class="br"><span class="lb"><span style="color:#34d399">●</span>🌐 Réseau</span><span class="cnt${mecaRj45===0?' z':''}">${mecaRj45}</span></div><div class="br"><span class="lb"><span style="color:#fb7185">●</span>📺 HDMI</span><span class="cnt${mecaHdmi===0?' z':''}">${mecaHdmi}</span></div></div>`;}
   if(S.lvls.length>1){h+='<div class="bg"><h4>Par étage</h4>';S.lvls.forEach(l=>{const n=l.els.length;h+=`<div class="br"><span class="lb">${esc(l.name)}</span><span class="cnt${n===0?' z':''}">${n} élém.</span></div>`;});h+='</div>';}
   h+='<div class="wb"><h4>Gaines & Câbles</h4>';
   if(wm!==null){
@@ -645,8 +677,8 @@ function autoAssign(){
   const elsIV=all.filter(e=>e.type==='inter_volet');
   const mk=(name,type,disj,sec)=>{const c={id:Date.now()+Math.random()+Math.random(),name,type,disj,sec};S.circs.push(c);return c;};
   const max16=Math.max(1,Math.min(8,S.cfg.maxP16));
-  // prise16 (1 point) + prise_double (2 points) dans les mêmes circuits 16A
-  const units16=[...els16.map(e=>({el:e,pts:1})),...elsDbl.map(e=>({el:e,pts:2}))];
+  // prise16 (1 point) + prise_double (mécaniques élec seulement) dans les mêmes circuits 16A
+  const units16=[...els16.map(e=>({el:e,pts:1})),...elsDbl.filter(e=>{const p=((e.meca1||'elec')==='elec'?1:0)+((e.meca2||'elec')==='elec'?1:0);return p>0;}).map(e=>{const p=((e.meca1||'elec')==='elec'?1:0)+((e.meca2||'elec')==='elec'?1:0);return {el:e,pts:p};})];
   let n16=0,curC16=null,cnt16=0;
   units16.forEach(({el,pts})=>{if(!curC16||cnt16+pts>max16){n16++;curC16=mk(`Prises 16A-${n16}`,'prise16',16,'2.5mm²');cnt16=0;}S.assgn[el.id]=curC16.id;cnt16+=pts;});
   els20.forEach((el,i)=>{const c=mk(`Prise 20A-${i+1}`,'prise20',20,'2.5mm²');S.assgn[el.id]=c.id;});
@@ -663,6 +695,8 @@ function autoAssign(){
 }
 
 function selHighlight(){
+  const mep=document.getElementById('mep');
+  if(mep){if(S.selEl&&S.selEl.type==='prise_double'){mep.style.display='flex';document.getElementById('mep1').value=S.selEl.meca1||'elec';document.getElementById('mep2').value=S.selEl.meca2||'elec';}else{mep.style.display='none';}}
   const p=document.getElementById('pC');
   if(!p||p.style.display==='none')return;
   p.querySelectorAll('.arow').forEach(r=>r.classList.remove('arow-sel'));
@@ -701,7 +735,7 @@ function renderCP(){
         ?assignedEls.filter(el=>el.type==='luminaire'||el.type==='applique').length
         :c.type==='volet'
         ?assignedEls.filter(el=>el.type==='volet_roulant'||el.type==='volet_battant').length
-        :assignedEls.reduce((s,el)=>s+(el.type==='prise_double'?2:1),0);
+        :assignedEls.reduce((s,el)=>s+(el.type==='prise_double'?((el.meca1||'elec')==='elec'?1:0)+((el.meca2||'elec')==='elec'?1:0):1),0);
       const maxPts=c.type==='prise20'?1:c.type==='lumiere'?S.cfg.maxLum:c.type==='volet'?8:S.cfg.maxP16;
       const over=pts>maxPts,atLim=pts===maxPts;
       const isHidden=!!S.hiddenCircs[cid];
@@ -875,9 +909,9 @@ async function idbPut(key,val){try{const db=await openIDB();await new Promise((r
 async function idbGet(key){try{const db=await openIDB();return await new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readonly');const r=tx.objectStore(IDB_STORE).get(key);r.onsuccess=()=>{db.close();res(r.result);};r.onerror=rej;});}catch(e){return null;}}
 
 // ═══════ HEADER ═══════
-function projectData(){return {v:4,scale:S.scale,cfg:S.cfg,circs:S.circs,assgn:S.assgn,hiddenCircs:S.hiddenCircs,hiddenRouting:S.hiddenRouting,lvls:S.lvls};}
+function projectData(){return {v:5,scale:S.scale,cfg:S.cfg,circs:S.circs,assgn:S.assgn,hiddenCircs:S.hiddenCircs,hiddenRouting:S.hiddenRouting,lvls:S.lvls};}
 function loadData(d){
-  if(d.v!==3&&d.v!==4){alert('Format de fichier non compatible avec cette version du logiciel.\nVeuillez recommencer un nouveau projet.');return;}
+  if(d.v!==3&&d.v!==4&&d.v!==5){alert('Format de fichier non compatible avec cette version du logiciel.\nVeuillez recommencer un nouveau projet.');return;}
   S.scale=d.scale;S.cfg={...S.cfg,...d.cfg};S.circs=d.circs||[];S.assgn=d.assgn||{};S.hiddenCircs=d.hiddenCircs||{};S.hiddenRouting=d.hiddenRouting||{};S.activeCircId=null;
   S.lvls=d.lvls;
   // v3 → v4 migration: convert wire point arrays to {pts,circId} objects
@@ -986,10 +1020,19 @@ function setupHdr(){
   upHdrTitle();
 }
 
+// ═══════ MECA PANEL ═══════
+function setupMep(){
+  const OPTS=[['elec','⚡ Prise électrique'],['rj45','🌐 Prise réseau'],['hdmi','📺 HDMI']];
+  ['mep1','mep2'].forEach(id=>{
+    const sel=document.getElementById(id);
+    sel.innerHTML=OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+    sel.onchange=()=>{if(!S.selEl||S.selEl.type!=='prise_double')return;pushHistory();if(id==='mep1')S.selEl.meca1=sel.value;else S.selEl.meca2=sel.value;render();upPanels();};
+  });
+}
 // ═══════ START ═══════
 async function init(){
   addLvl('RDC');
-  setupTB();setupCV();setupPTabs();setupSettings();setupCtx();setupHdr();
+  setupTB();setupCV();setupPTabs();setupSettings();setupCtx();setupHdr();setupMep();
   setTool('select');resCV();upPanels();
   // Try to restore last file handle from IndexedDB
   try{
