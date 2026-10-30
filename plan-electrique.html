@@ -68,6 +68,7 @@
 .srow2{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;}
 .srow2 span{color:var(--txt2);}.srow2 strong{font-family:'DM Mono',monospace;color:var(--acc);}
 .cdf{background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r);padding:9px;margin-bottom:5px;cursor:pointer;}
+.cdf.cdf-cur{outline:2px dashed var(--cc);outline-offset:1px;}
 .cdf.cdf-focus{outline:2px solid var(--fc);outline-offset:1px;background:var(--surf3);}
 .cdft{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
 .cdfn{flex:1;background:var(--surf3);border:1px solid var(--brd);border-radius:5px;color:var(--txt);font-family:'Syne',sans-serif;font-size:11px;padding:3px 6px;}
@@ -474,7 +475,9 @@ function setupCV(){
       const el=elAt(x,y);
       if(el){pushHistory();S.drag=el;S.selEl=el;S.selWire=-1;const xf=imgXf(lvl());const ec=w2c(xf,el.x,el.y);S.dragOff={x:x-ec.x,y:y-ec.y};}
       else{const wi=wireAt(x,y);S.selWire=wi;S.selEl=null;if(wi<0)startPan();}
-      render();selHighlight();
+      // une nouvelle sélection quitte la mise en avant d'un réseau (sinon elle reste sous le voile)
+      if(S.focusCirc&&(S.selEl||S.selWire>=0))setFocusCirc(null);
+      render();selHighlight(true);
     }
     else if(S.tool==='wire'){S.wirePs.push(c2w(imgXf(lvl()),x,y));}
     else if(S.tool==='line'){const wp=c2w(imgXf(lvl()),x,y);if(!S.linePt){S.linePt=wp;}else{pushHistory();lvl().wires.push({pts:[S.linePt,wp],circId:S.activeCircId||null});S.linePt=null;render();upPanels();}}
@@ -765,12 +768,12 @@ function render(){
   }
   if(S.scaleS){const a=w2c(xf,S.scaleS.x1,S.scaleS.y1);ctx.beginPath();ctx.strokeStyle='#f0c040';ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.moveTo(a.x,a.y);if(S.scaleS.done){const b=w2c(xf,S.scaleS.x2,S.scaleS.y2);ctx.lineTo(b.x,b.y);}else ctx.lineTo(S.mx,S.my);ctx.stroke();ctx.setLineDash([]);}
 
-  // Liaisons du groupe sélectionné : chemin tracé (jaune)
-  const grp=S.selEl&&l.els.includes(S.selEl)?linkGroup(S.selEl):[],tags=[];
-  const linked=grp.filter(e=>e!==S.selEl);
+  // Liaisons directes de l'élément sélectionné uniquement (pas tout le groupe) : chemin tracé (jaune)
+  const sel=S.selEl&&l.els.includes(S.selEl)?S.selEl:null,tags=[];
+  const linked=sel?linkedEls(sel):[];
   const midOf=cps=>{let tot=0;const sl=[];for(let i=1;i<cps.length;i++){const d=Math.hypot(cps[i].x-cps[i-1].x,cps[i].y-cps[i-1].y);sl.push(d);tot+=d;}
     let acc=0;for(let i=0;i<sl.length;i++){if(acc+sl[i]>=tot/2){const t=sl[i]?(tot/2-acc)/sl[i]:0;return{x:cps[i].x+(cps[i+1].x-cps[i].x)*t,y:cps[i].y+(cps[i+1].y-cps[i].y)*t};}acc+=sl[i];}return cps[0];};
-  groupLinks(grp).forEach(({a,b,pts})=>{
+  (sel?groupLinks([sel,...linked]).filter(k=>k.a===sel||k.b===sel):[]).forEach(({a,b,pts})=>{
     const cps=[a,...pts,b].map(p=>w2c(xf,p.x,p.y));
     const path=()=>{ctx.beginPath();ctx.moveTo(cps[0].x,cps[0].y);for(let i=1;i<cps.length;i++)ctx.lineTo(cps[i].x,cps[i].y);};
     ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
@@ -877,7 +880,7 @@ function setupPTabs(){
       ['pB','pC','pS'].forEach(id=>document.getElementById(id).style.display='none');
       const m={bilan:'pB',circuits:'pC',settings:'pS'};
       document.getElementById(m[tab.dataset.tab]).style.display='block';
-      if(tab.dataset.tab==='circuits')renderCP();
+      if(tab.dataset.tab==='circuits'){renderCP();selHighlight(true);}
     };
   });
 }
@@ -948,15 +951,24 @@ function autoAssign(){
   render();renderCP();
 }
 
-function selHighlight(){
+// toCirc=true : fait défiler la liste jusqu'à la carte du circuit de l'élément / de la gaine sélectionné(e)
+function selHighlight(toCirc){
   const mep=document.getElementById('mep');
   if(mep){if(S.selEl&&S.selEl.type==='prise_double'){mep.style.display='flex';document.getElementById('mep1').value=S.selEl.meca1||'elec';document.getElementById('mep2').value=S.selEl.meca2||'elec';}else{mep.style.display='none';}}
   const p=document.getElementById('pC');
   if(!p||p.style.display==='none')return;
   p.querySelectorAll('.arow').forEach(r=>r.classList.remove('arow-sel'));
+  p.querySelectorAll('.cdf-cur').forEach(c=>c.classList.remove('cdf-cur'));
+  const w=S.selWire>=0?lvl().wires[S.selWire]:null;
+  const cid=S.selEl?S.assgn[S.selEl.id]:w?w.circId:null;
+  const ci=cid!=null?S.circs.findIndex(c=>String(c.id)===String(cid)):-1;
+  if(ci>=0){
+    const card=p.querySelector(`.cdf[data-cid="${S.circs[ci].id}"]`);
+    if(card){card.classList.add('cdf-cur');card.style.setProperty('--cc',CC[ci%CC.length]);if(toCirc)card.scrollIntoView({block:'nearest',behavior:'smooth'});}
+  }
   if(!S.selEl)return;
   const row=p.querySelector(`.arow[data-elid="${S.selEl.id}"]`);
-  if(row){row.classList.add('arow-sel');row.scrollIntoView({block:'nearest',behavior:'smooth'});}
+  if(row){row.classList.add('arow-sel');if(!toCirc)row.scrollIntoView({block:'nearest',behavior:'smooth'});}
 }
 
 function allElCnt(){let n=0;S.lvls.forEach(l=>l.els.forEach(el=>{if(el.type!=='tableau')n++;}));return n;}
@@ -1100,7 +1112,7 @@ function renderCP(){
       S.lvls.forEach((lv,li)=>lv.els.forEach(el=>{if(String(el.id)===eid){found=el;foundLvl=li;}}));
       if(!found)return;
       if(foundLvl!==S.curLvl)switchLvl(foundLvl);
-      S.selEl=found;S.selWire=-1;
+      S.selEl=found;S.selWire=-1;if(S.focusCirc)setFocusCirc(null);
       render();selHighlight();
     };
   });
