@@ -149,10 +149,11 @@
 .ctrace{background:transparent;border:none;cursor:pointer;padding:1px 4px;border-radius:3px;flex-shrink:0;line-height:1;display:flex;align-items:center;}.ctrace:hover{background:var(--surf);}
 .mep-sel{background:var(--surf2);border:1px solid var(--brd);border-radius:4px;color:var(--txt);padding:3px 7px;font-family:'Syne',sans-serif;font-size:11px;cursor:pointer;outline:none;}.mep-sel:focus{border-color:var(--acc2);}
 /* mode impression */
-#pbar{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:10px;z-index:45;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);padding:6px 11px;font-size:11px;white-space:nowrap;color:var(--txt2);}
+#pbar{position:absolute;top:10px;left:10px;right:10px;width:fit-content;margin:0 auto;display:none;flex-wrap:wrap;justify-content:center;row-gap:6px;align-items:center;gap:10px;z-index:45;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);padding:6px 11px;font-size:11px;white-space:nowrap;color:var(--txt2);box-sizing:border-box;}
 #pbar label{display:flex;align-items:center;gap:4px;cursor:pointer;}
 #pbar input[type=range]{width:64px;accent-color:var(--acc);}
 #pbar input[type=checkbox]{accent-color:var(--acc);}
+#pbar #pNav button{padding:2px 7px;}
 #pbar button{padding:4px 10px;border-radius:var(--r);border:1px solid var(--brd);background:var(--surf2);color:var(--txt);font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;}
 #pbar #pGo{background:var(--acc);color:#111;border-color:var(--acc);}
 .hbt.on{background:var(--acc);color:#111;border-color:var(--acc);}
@@ -162,7 +163,8 @@
   html,body{height:auto;overflow:visible;background:#fff;}
   #app,#ctx,#tip,.mb{display:none!important;}
   #printOut{display:block;}
-  #printOut img{display:block;width:100vw;height:100vh;object-fit:contain;}
+  #printOut img{display:block;width:100vw;height:100vh;object-fit:contain;break-after:page;page-break-after:always;}
+  #printOut img:last-child{break-after:auto;page-break-after:auto;}
 }
 </style>
 <style id="pgStyle"></style>
@@ -255,16 +257,19 @@
   <div class="fh fhs" id="fhS">Tracez une ligne sur le plan pour définir l'échelle</div>
   <div id="ib"></div>
   <div id="pbar">
+    <select id="pPage" class="mep-sel"><option value="plan">Plan</option><option value="check">Check-list</option></select>
+    <span id="pNav" style="display:none;align-items:center;gap:4px"><button id="pPrev">◀</button><span id="pPgN"></span><button id="pNext">▶</button></span>
     <select id="pFmt" class="mep-sel"><option value="A4">A4</option><option value="A3">A3</option></select>
     <select id="pOri" class="mep-sel"><option value="L">Paysage</option><option value="P">Portrait</option></select>
-    <label title="Taille des pictos (mm sur papier)">Pictos <input type="range" id="pSym" min="2" max="6" step="0.5"></label>
-    <label title="Aligne côte à côte les prises/inters proches"><input type="checkbox" id="pMag">Aimant</label>
-    <input type="range" id="pMagD" min="3" max="25" step="1" title="Distance d'attraction (mm sur papier)">
-    <label title="Opacité du plan">Plan <input type="range" id="pPlan" min="5" max="80" step="5"></label>
-    <label><input type="checkbox" id="pLnk">Commandes</label>
-    <label><input type="checkbox" id="pWir">Gaines</label>
+    <label class="pp" title="Taille des pictos (mm sur papier)">Pictos <input type="range" id="pSym" min="2" max="6" step="0.5"></label>
+    <label class="pp" title="Aligne côte à côte les prises/inters proches"><input type="checkbox" id="pMag">Aimant</label>
+    <input class="pp" type="range" id="pMagD" min="3" max="25" step="1" title="Distance d'attraction (mm sur papier)">
+    <label class="pp" title="Opacité du plan">Plan <input type="range" id="pPlan" min="5" max="80" step="5"></label>
+    <label class="pp"><input type="checkbox" id="pLnk">Commandes</label>
+    <label class="pp" title="Repères P1, I2… et hauteurs, communs avec la check-list"><input type="checkbox" id="pRep">Repères</label>
+    <label class="pp"><input type="checkbox" id="pWir">Gaines</label>
     <label><input type="checkbox" id="pCol">Couleurs</label>
-    <button id="pGo">🖨 Imprimer</button><button id="pX">✕ Édition</button>
+    <button id="pGo" title="Imprime le plan puis la check-list ; choisissez les pages dans la fenêtre d'impression">🖨 Imprimer</button><button id="pX">✕ Édition</button>
   </div>
   <div id="zc"><button id="zOut" title="Dézoomer (−)">−</button><button id="zLbl" title="Réinitialiser (0)">100%</button><button id="zIn" title="Zoomer (+)">+</button><button id="zFit" title="Ajuster au plan (0)">⤢</button></div>
   <div id="mep" style="position:absolute;bottom:13px;left:13px;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);padding:7px 11px;display:none;align-items:center;gap:8px;font-size:11px;z-index:40;white-space:nowrap;"><span style="color:var(--txt2);font-weight:700">Mécaniques :</span><select id="mep1" class="mep-sel"></select><span style="color:var(--txt2)">+</span><select id="mep2" class="mep-sel"></select></div>
@@ -286,6 +291,7 @@
   <button id="ctxDup">📋 Dupliquer</button>
   <button id="ctxLink">🔗 Relier</button>
   <button id="ctxUnlink">✂ Délier</button>
+  <button id="ctxH">📏 Hauteur</button>
   <div id="ctxCirc"></div>
   <hr id="ctxHrEl">
   <button id="ctxDel" class="d">🗑 Supprimer</button>
@@ -488,7 +494,7 @@ function setupCV(){
       let lt='';
       if(isSw(el.type)){if(gl.length)lt+=' · Commande : '+gl.map(elLabel).join(', ');if(gs.length)lt+=' · Va-et-vient avec : '+gs.map(elLabel).join(', ');}
       else if(gs.length)lt=' · Commandé par : '+gs.map(elLabel).join(', ');
-      tip.textContent=elLabel(el)+' · '+T[el.type].sec+(cn?' · Circuit: '+cn.name:'')+lt;
+      tip.textContent=elLabel(el)+(elH(el)!=null?' · h '+elH(el)+' cm':'')+' · '+T[el.type].sec+(cn?' · Circuit: '+cn.name:'')+lt;
     } else tip.style.display='none';
     if(S.linkFrom||(S.tool==='wire'&&S.wirePs.length>0)||(S.tool==='line'&&S.linePt)||(S.tool==='scale'&&S.scaleS&&!S.scaleS.done)) render();
     const ib=document.getElementById('ib');
@@ -531,6 +537,8 @@ function setupCV(){
       const cl=document.getElementById('ctxLink');
       cl.style.display=isSw(el.type)||isLoad(el.type)?'':'none';
       document.getElementById('ctxUnlink').style.display=linkedEls(el).length?'':'none';
+      const ch=document.getElementById('ctxH');ch.style.display=hasH(el.type)?'':'none';
+      ch.textContent=`📏 Hauteur : ${elH(el)!=null?elH(el)+' cm':'—'}${el.h!=null?'':' (défaut)'}`;
       fillCtxCirc(el.type==='tableau'?null:String(S.assgn[el.id]||''),v=>{if(v)S.assgn[el.id]=v;else delete S.assgn[el.id];});
       cl.textContent='🔗 Relier / tracer';
       document.getElementById('ctxWireDel').style.display='none';
@@ -539,7 +547,7 @@ function setupCV(){
       const wi=wireAt(x,y);
       if(wi>=0){
         S.ctxWireIdx=wi;S.selWire=wi;render();
-        ['ctxRot','ctxDup','ctxHrEl','ctxDel','ctxLink','ctxUnlink'].forEach(id=>document.getElementById(id).style.display='none');
+        ['ctxRot','ctxDup','ctxHrEl','ctxDel','ctxLink','ctxUnlink','ctxH'].forEach(id=>document.getElementById(id).style.display='none');
         document.getElementById('ctxWireDel').style.display='';
         const w=lvl().wires[wi];fillCtxCirc(w.circId!=null?String(w.circId):'',v=>{w.circId=v||null;});
         showCtx(e.clientX,e.clientY);
@@ -874,8 +882,20 @@ function render(){
 // Rendu « plan d'électricien » : plan estompé en gris, symboles normalisés noirs et petits,
 // appareillages proches alignés côte à côte (aimant), commandes en arcs pointillés,
 // repère de circuit (C1, C2…), légende et cartouche. Ne modifie pas le projet.
-const PDEF={fmt:'A3',ori:'L',sym:4,mag:true,magD:8,plan:30,lnk:true,wir:false,col:false};
-const pc=()=>({...PDEF,...(S.cfg.print||{})});
+const PDEF={page:'plan',fmt:'A3',ori:'L',sym:4,mag:true,magD:8,plan:30,lnk:true,rep:true,wir:false,col:false};
+// Hauteur de pose (cm, axe de la boîte depuis le sol fini) : valeur saisie, sinon usage courant
+const DEFH={prise16:30,prise20:30,prise_double:30,prise_rj45:30,inter_simple:110,inter_double:110,inter_volet:110,applique:180};
+const hasH=t=>t!=='luminaire'&&t!=='tableau';
+const elH=el=>el.h!=null?el.h:(DEFH[el.type]??null);
+// Repères (P1, I2, L3…) communs au plan et à la check-list, numérotés dans le sens de lecture
+const REPP={prise16:'P',prise20:'P',prise_double:'P',prise_rj45:'RJ',inter_simple:'I',inter_double:'I',inter_volet:'IV',luminaire:'L',applique:'L',volet_roulant:'V',volet_battant:'V'};
+function repMap(l){
+  const m=new Map(),n={},band=S.scale||100; // bandes d'1 m de haut, puis de gauche à droite
+  l.els.filter(e=>REPP[e.type]).sort((a,b)=>Math.floor(a.y/band)-Math.floor(b.y/band)||a.x-b.x)
+    .forEach(e=>{const p=REPP[e.type];n[p]=(n[p]||0)+1;m.set(e,p+n[p]);});
+  return m;
+}
+const pc=()=>{const o={...PDEF,...(S.cfg.print||{})};if(o.page!=='check')o.page='plan';return o;};
 const WALL=new Set(['prise16','prise_double','prise20','inter_simple','inter_double','inter_volet','prise_rj45']);
 function paperMM(o){const[a,b]=o.fmt==='A4'?[297,210]:[420,297];return o.ori==='P'?[b,a]:[a,b];}
 // encombrement d'un symbole, en tailles de picto (sert à l'alignement)
@@ -981,6 +1001,23 @@ function drawSheet(g,k,o){
   // symboles
   els.forEach(e=>{const p=pos.get(e);g.save();g.translate(p.x,p.y);g.rotate((e.rot||0)*Math.PI/180);
     g.strokeStyle=colOf(e);g.fillStyle=colOf(e);g.lineWidth=lw;g.lineJoin='round';psym(g,e.type,u,e);g.restore();});
+  // repère + hauteur de chaque point : sous la rangée si alignés horizontalement, sinon à droite
+  if(o.rep){
+    const rm=repMap(l);g.save();g.textBaseline='middle';
+    gInfo.forEach(({c,hor})=>c.forEach(e=>{
+      const r=rm.get(e);if(!r)return;
+      const p=pos.get(e),hv=hasH(e.type)?elH(e):null;
+      if(c.length>1&&hor){
+        g.textAlign='center';g.fillStyle='#000';g.font=`700 ${u*.42}px Syne,sans-serif`;g.fillText(r,p.x,p.y+u*.85);
+        if(hv!=null){g.fillStyle='#555';g.font=`500 ${u*.34}px Syne,sans-serif`;g.fillText("h"+hv,p.x,p.y+u*1.3);}
+      }else{
+        const x=p.x+symW(e.type)*u/2+u*.15;g.textAlign='left';
+        g.fillStyle='#000';g.font=`700 ${u*.42}px Syne,sans-serif`;g.fillText(r,x,p.y+u*.2);
+        if(hv!=null){const w=g.measureText(r).width;g.fillStyle='#555';g.font=`500 ${u*.34}px Syne,sans-serif`;g.fillText(' h'+hv,x+w,p.y+u*.2);}
+      }
+    }));
+    g.restore();
+  }
   // repères de circuit : un par groupe
   g.save();g.font=`600 ${Math.max(1.8*k,u*.42)}px Syne,sans-serif`;g.textBaseline='middle';
   gInfo.forEach(({c,cx,cy,hor})=>{
@@ -1044,25 +1081,138 @@ function drawSheet(g,k,o){
   }else g.fillText(`Format ${o.fmt} · échelle non définie`,tx,ct+23.5*k);
   g.restore();
 }
+// ── Check-list chantier ──
+// Une ligne par point (repère du plan), une case par étape : une ligne sans croix = reste à faire.
+const STEPS=[
+  ['Boîte',"boîte d'encastrement posée, à la bonne hauteur"],
+  ['Gaine',"gaine passée jusqu'au tableau / à la boîte de dérivation"],
+  ['Repérée','gaine étiquetée aux deux bouts avec le repère'],
+  ['Fils','conducteurs tirés (section, couleurs)'],
+  ['Méca','mécanisme ou DCL posé'],
+  ['Tableau','raccordé sur son disjoncteur'],
+  ['Testé','essai OK (testeur, allumage, sens du volet)'],
+];
+// étapes sans objet : un volet n'a ni boîte ni mécanisme
+const naStep=(t,i)=>(t==='volet_roulant'||t==='volet_battant')&&(i===0||i===4);
+const REPO=['P','RJ','I','IV','L','V'];
+function checkRows(){
+  const l=lvl(),rm=repMap(l);
+  const els=l.els.filter(e=>rm.has(e)&&!S.hiddenCircs[String(S.assgn[e.id])]);
+  const key=e=>{const r=rm.get(e),p=r.replace(/\d+$/,'');return REPO.indexOf(p)*1e4+parseInt(r.slice(p.length));};
+  const rows=[];
+  const push=(c,i,list)=>{if(!list.length)return;rows.push({head:c,i});list.sort((a,b)=>key(a)-key(b)).forEach(e=>rows.push({el:e,rep:rm.get(e)}));};
+  S.circs.forEach((c,i)=>push(c,i,els.filter(e=>String(S.assgn[e.id])===String(c.id))));
+  push(null,-1,els.filter(e=>!S.circs.some(c=>String(c.id)===String(S.assgn[e.id]))));
+  return rows;
+}
+const CK={top:40,foot:12,row:8,head:7}; // mm
+function checkPages(o){
+  const[,H]=paperMM(o),avail=H-10-CK.top-CK.foot,pages=[[]];let y=0;
+  checkRows().forEach((r,i,a)=>{
+    const h=r.head!==undefined?CK.head:CK.row;
+    // un titre de circuit ne reste pas seul en bas de page
+    const need=r.head!==undefined&&a[i+1]?h+CK.row:h;
+    if(y+need>avail&&pages.at(-1).length){pages.push([]);y=0;}
+    pages.at(-1).push(r);y+=h;
+  });
+  return pages;
+}
+function drawChecklist(g,k,o,pi,pages){
+  const[W,H]=paperMM(o),l=lvl(),M=10,rows=pages[pi]||[];
+  const mm=v=>v*k,F=(w,sz)=>`${w} ${sz*k}px Syne,sans-serif`;
+  g.save();g.fillStyle='#fff';g.fillRect(0,0,mm(W),mm(H));g.fillStyle='#000';g.strokeStyle='#000';
+  const name=S.fileHandle?S.fileHandle.name.replace(/\.json$/i,''):'Plan électrique';
+  // en-tête
+  g.textBaseline='alphabetic';g.textAlign='left';
+  g.font=F(800,5.2);g.fillText('Check-list chantier · '+l.name,mm(M),mm(M+6));
+  g.font=F(500,2.6);g.fillStyle='#444';g.textAlign='right';
+  g.fillText(`${name} · ${new Date().toLocaleDateString('fr-FR')} · page ${pi+1}/${pages.length}`,mm(W-M),mm(M+6));
+  g.textAlign='left';g.fillStyle='#000';g.font=F(500,2.4);
+  g.fillText('Faites une croix dans la case quand l\'étape est faite. Une case vide = reste à faire. Repères identiques au plan imprimé ; hauteur = axe de la boîte depuis le sol fini (cm).',mm(M),mm(M+12),mm(W-2*M));
+  const half=Math.ceil(STEPS.length/2),cw=(W-2*M)/2;
+  STEPS.forEach(([n,d],i)=>{const cx=M+(i<half?0:cw),cy=M+18+(i%half)*4.6;
+    g.font=F(700,2.4);g.fillText(n,mm(cx),mm(cy));const w=g.measureText(n+' ').width;g.font=F(400,2.4);g.fillText('— '+d,mm(cx)+w,mm(cy),mm(cw-4)-w);});
+  // colonnes
+  const fixed=[['Repère',15],['Point',40],['Circ.',11],['H (cm)',13]],sw=13;
+  const notesW=Math.max(15,W-2*M-fixed.reduce((a,c)=>a+c[1],0)-sw*STEPS.length);
+  const cols=[...fixed,...STEPS.map(s=>[s[0],sw]),['Notes',notesW]];
+  const xs=[M];cols.forEach(c=>xs.push(xs.at(-1)+c[1]));const R=xs.at(-1);
+  let y=M+CK.top-6;
+  g.fillStyle='#000';g.fillRect(mm(M),mm(y),mm(R-M),mm(6));
+  g.fillStyle='#fff';g.font=F(700,2.3);g.textBaseline='middle';
+  cols.forEach((c,i)=>{g.textAlign=i<1||i===1||i===cols.length-1?'left':'center';g.fillText(c[0],g.textAlign==='left'?mm(xs[i]+1.5):mm(xs[i]+c[1]/2),mm(y+3));});
+  y+=6;
+  const box=(cx,cy,na)=>{const s=5.5;
+    if(na){g.save();g.strokeStyle='#bbb';g.lineWidth=mm(.2);g.beginPath();g.moveTo(mm(cx-s/2),mm(cy+s/2));g.lineTo(mm(cx+s/2),mm(cy-s/2));g.stroke();g.restore();return;}
+    g.lineWidth=mm(.3);g.strokeStyle='#000';g.strokeRect(mm(cx-s/2),mm(cy-s/2),mm(s),mm(s));};
+  let odd=false;
+  rows.forEach(r=>{
+    if(r.head!==undefined){
+      const c=r.head,h=CK.head;
+      g.fillStyle='#e4e4e4';g.fillRect(mm(M),mm(y),mm(R-M),mm(h));
+      g.fillStyle=o.col&&c?CC[r.i%CC.length]:'#000';g.font=F(800,2.8);g.textAlign='left';
+      g.fillText(c?`C${r.i+1}`:'—',mm(M+1.5),mm(y+h/2));
+      g.fillStyle='#000';g.font=F(600,2.6);
+      g.fillText(c?`${c.name} · ${c.disj||''}A · ${c.sec||''}`:'Sans circuit (à affecter)',mm(xs[1]+1.5),mm(y+h/2));
+      if(c){g.font=F(500,2.2);g.textAlign='right';g.fillText('Disjoncteur posé et étiqueté',mm(R-8),mm(y+h/2));box(R-4,y+h/2);}
+      y+=h;odd=false;return;
+    }
+    const e=r.el,h=CK.row,t=T[e.type];
+    if(odd){g.fillStyle='#f5f5f5';g.fillRect(mm(M),mm(y),mm(R-M),mm(h));}odd=!odd;
+    // picto du plan pour reconnaître le point d'un coup d'œil
+    g.save();g.translate(mm(xs[0]+4),mm(y+h/2));g.strokeStyle='#000';g.fillStyle='#000';g.lineWidth=mm(.22);psym(g,e.type,mm(3.6)/Math.max(1,symW(e.type)/1.3),e);g.restore();
+    g.fillStyle='#000';g.textAlign='left';g.font=F(800,3);g.fillText(r.rep,mm(xs[0]+8),mm(y+h/2));
+    let lab=t.label;if(e.type==='prise_double'){const mn={elec:'PC',rj45:'RJ45',hdmi:'HDMI'};lab+=` (${mn[e.meca1||'elec']}+${mn[e.meca2||'elec']})`;}
+    g.font=F(500,2.4);g.fillText(lab,mm(xs[1]+1.5),mm(y+h/2),mm(cols[1][1]-3));
+    const ci=S.circs.findIndex(c=>String(c.id)===String(S.assgn[e.id]));
+    g.textAlign='center';g.font=F(600,2.4);g.fillText(ci>=0?'C'+(ci+1):'',mm(xs[2]+cols[2][1]/2),mm(y+h/2));
+    const hv=hasH(e.type)?elH(e):null;g.font=F(800,3);g.fillText(hv!=null?String(hv):'',mm(xs[3]+cols[3][1]/2),mm(y+h/2));
+    STEPS.forEach((_,i)=>box(xs[4+i]+sw/2,y+h/2,naStep(e.type,i)));
+    y+=h;
+    g.strokeStyle='#ccc';g.lineWidth=mm(.15);g.beginPath();g.moveTo(mm(M),mm(y));g.lineTo(mm(R),mm(y));g.stroke();
+  });
+  // séparations verticales
+  g.strokeStyle='#999';g.lineWidth=mm(.15);
+  xs.forEach((x,i)=>{if(i===0||i===xs.length-1)return;g.beginPath();g.moveTo(mm(x),mm(M+CK.top));g.lineTo(mm(x),mm(y));g.stroke();});
+  g.strokeStyle='#000';g.lineWidth=mm(.35);g.strokeRect(mm(M),mm(M+CK.top-6),mm(R-M),mm(y-(M+CK.top-6)));
+  // pied
+  const n=pages.flat().filter(r=>r.el).length;
+  g.font=F(500,2.3);g.fillStyle='#444';g.textAlign='left';g.textBaseline='alphabetic';
+  g.fillText(`${n} points · ${STEPS.length} étapes chacun · page ${pi+1}/${pages.length}`,mm(M),mm(H-M));
+  g.restore();
+}
+// Pages : l'aperçu montre le plan ou la check-list ; l'impression sort tout (all=true),
+// l'utilisateur choisit ensuite les pages dans la fenêtre d'impression du système
+function printPages(o,all){
+  const out=[];
+  if(all||o.page!=='check')out.push(g=>(k=>drawSheet(g,k,o)));
+  if(all||o.page==='check'){const pg=checkPages(o);pg.forEach((_,i)=>out.push(g=>(k=>drawChecklist(g,k,o,i,pg))));}
+  return out;
+}
 // Aperçu à l'écran : la feuille posée sur un fond gris
 function renderPrint(){
-  const o=pc(),[W,H]=paperMM(o),top=58,pad=22;
+  const o=pc(),[W,H]=paperMM(o),top=document.getElementById('pbar').offsetHeight+22,pad=22,pages=printPages(o);
+  S.pg=Math.max(0,Math.min(S.pg||0,pages.length-1));
   const k=Math.min((cv.width-2*pad)/W,(cv.height-top-pad)/H);
   ctx.fillStyle='#4a4a55';ctx.fillRect(0,0,cv.width,cv.height);
   const x=(cv.width-W*k)/2,y=top+(cv.height-top-pad-H*k)/2;
   ctx.save();ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=20;ctx.shadowOffsetY=4;ctx.fillStyle='#fff';ctx.fillRect(x,y,W*k,H*k);ctx.restore();
-  ctx.save();ctx.translate(x,y);drawSheet(ctx,k,o);ctx.restore();
+  ctx.save();ctx.translate(x,y);pages[S.pg](ctx)(k);ctx.restore();
+  const nav=document.getElementById('pNav');nav.style.display=pages.length>1?'flex':'none';
+  document.getElementById('pPgN').textContent=`${S.pg+1}/${pages.length}`;
 }
 function doPrint(){
   const o=pc(),[W,H]=paperMM(o),k=8; // ≈ 200 dpi
-  const c=document.createElement('canvas');c.width=Math.round(W*k);c.height=Math.round(H*k);
-  drawSheet(c.getContext('2d'),k,o);
   document.getElementById('pgStyle').textContent=`@page{size:${o.fmt} ${o.ori==='P'?'portrait':'landscape'};margin:0}`;
-  const out=document.getElementById('printOut'),im=new Image();out.innerHTML='';out.appendChild(im);
-  im.onload=()=>setTimeout(()=>window.print(),50);im.src=c.toDataURL('image/png');
+  const out=document.getElementById('printOut');out.innerHTML='';
+  const imgs=printPages(o,true).map(draw=>{
+    const c=document.createElement('canvas');c.width=Math.round(W*k);c.height=Math.round(H*k);draw(c.getContext('2d'))(k);
+    const im=new Image();out.appendChild(im);return new Promise(r=>{im.onload=r;im.src=c.toDataURL('image/png');});
+  });
+  Promise.all(imgs).then(()=>setTimeout(()=>window.print(),50));
 }
 function setPrintMode(on){
-  S.printMode=on;
+  S.printMode=on;S.pg=0;
   if(on){endLink(true);S.selEl=null;S.selWire=-1;S.wirePs=[];S.linePt=null;hideCtx();if(S.focusCirc)setFocusCirc(null);setTool('select');}
   document.getElementById('app').classList.toggle('printing',on);
   document.getElementById('pbar').style.display=on?'flex':'none';
@@ -1071,21 +1221,26 @@ function setPrintMode(on){
   syncPbar();resCV();upPanels();
 }
 function syncPbar(){
-  const o=pc();
-  document.getElementById('pFmt').value=o.fmt;document.getElementById('pOri').value=o.ori;
-  document.getElementById('pSym').value=o.sym;document.getElementById('pMag').checked=o.mag;document.getElementById('pMagD').value=o.magD;
-  document.getElementById('pPlan').value=o.plan;document.getElementById('pLnk').checked=o.lnk;
-  document.getElementById('pWir').checked=o.wir;document.getElementById('pCol').checked=o.col;
-  document.getElementById('pMagD').disabled=!o.mag;
+  const o=pc(),$=id=>document.getElementById(id);
+  $('pPage').value=o.page;$('pFmt').value=o.fmt;$('pOri').value=o.ori;
+  $('pSym').value=o.sym;$('pMag').checked=o.mag;$('pMagD').value=o.magD;
+  $('pPlan').value=o.plan;$('pLnk').checked=o.lnk;$('pRep').checked=o.rep;
+  $('pWir').checked=o.wir;$('pCol').checked=o.col;
+  $('pMagD').disabled=!o.mag;
+  // réglages du plan inutiles sur la seule check-list
+  document.querySelectorAll('#pbar .pp').forEach(e=>e.style.display=o.page==='check'?'none':'');
 }
 function setupPrint(){
   document.getElementById('bPrint').onclick=()=>setPrintMode(!S.printMode);
   document.getElementById('pX').onclick=()=>setPrintMode(false);
   document.getElementById('pGo').onclick=doPrint;
-  const bind=(id,key,get)=>document.getElementById(id).addEventListener('input',e=>{S.cfg.print={...pc(),[key]:get(e.target)};syncPbar();render();});
-  bind('pFmt','fmt',t=>t.value);bind('pOri','ori',t=>t.value);
+  document.getElementById('pPrev').onclick=()=>{S.pg--;render();};
+  document.getElementById('pNext').onclick=()=>{S.pg++;render();};
+  const bind=(id,key,get)=>document.getElementById(id).addEventListener('input',e=>{S.cfg.print={...pc(),[key]:get(e.target)};if(key==='page')S.pg=0;syncPbar();render();});
+  bind('pPage','page',t=>t.value);bind('pFmt','fmt',t=>t.value);bind('pOri','ori',t=>t.value);
   bind('pSym','sym',t=>+t.value);bind('pMag','mag',t=>t.checked);bind('pMagD','magD',t=>+t.value);
-  bind('pPlan','plan',t=>+t.value);bind('pLnk','lnk',t=>t.checked);bind('pWir','wir',t=>t.checked);bind('pCol','col',t=>t.checked);
+  bind('pPlan','plan',t=>+t.value);bind('pLnk','lnk',t=>t.checked);bind('pRep','rep',t=>t.checked);
+  bind('pWir','wir',t=>t.checked);bind('pCol','col',t=>t.checked);
 }
 
 // ═══════ SCALE MODAL ═══════
@@ -1104,6 +1259,12 @@ function setupCtx(){
   document.getElementById('ctxDup').onclick=()=>{if(S.ctxEl)placeEl(S.ctxEl.type,S.ctxEl.x+22,S.ctxEl.y+22);hideCtx();};
   document.getElementById('ctxLink').onclick=()=>{if(S.ctxEl)startLink(S.ctxEl);hideCtx();};
   document.getElementById('ctxUnlink').onclick=()=>{if(S.ctxEl)unlinkAll(S.ctxEl);hideCtx();};
+  document.getElementById('ctxH').onclick=()=>{
+    const el=S.ctxEl;hideCtx();if(!el)return;
+    const v=prompt(`Hauteur de ${elLabel(el)} (cm, axe de la boîte depuis le sol fini).\nVide = valeur par défaut (${DEFH[el.type]??'—'} cm).`,el.h??elH(el)??'');
+    if(v===null)return;const n=parseFloat(String(v).replace(',','.'));
+    pushHistory();if(String(v).trim()===''||isNaN(n))delete el.h;else el.h=Math.round(n);render();
+  };
   document.getElementById('ctxDel').onclick=()=>{if(S.ctxEl)delEl(S.ctxEl);hideCtx();};
   document.getElementById('ctxWireDel').onclick=()=>{
     const wires=lvl().wires;
