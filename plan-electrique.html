@@ -157,6 +157,8 @@
 #pbar button{padding:4px 10px;border-radius:var(--r);border:1px solid var(--brd);background:var(--surf2);color:var(--txt);font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;}
 #pbar #pGo{background:var(--acc);color:#111;border-color:var(--acc);}
 .hbt.on{background:var(--acc);color:#111;border-color:var(--acc);}
+#saveSt{font-size:10px;font-family:'DM Mono',monospace;color:var(--txt2);white-space:nowrap;cursor:default;}
+#saveSt.dirty{color:var(--orn);}#saveSt.ok{color:var(--grn);}#saveSt.warn{color:var(--acc);}
 #app.printing #tb,#app.printing #zc,#app.printing #mep,#app.printing .fh,#app.printing #chint{display:none!important;}
 #printOut{display:none;}
 @media print{
@@ -178,10 +180,12 @@
   <button class="hbt" id="bAddLvl">＋</button>
   <button class="hbt hd" id="bDelLvl" title="Supprimer cet étage">✕</button>
   <div class="hs"></div>
+  <button class="hbt" id="bNew" title="Nouveau projet vide">📄 Nouveau</button>
   <button class="hbt" id="bSave">💾 Sauvegarder</button>
   <button class="hbt" id="bLoad">📂 Charger</button>
   <button class="hbt" id="bLoadNew" style="display:none" title="Ouvrir un autre fichier">📂</button>
   <input type="file" id="jIn" accept=".json" style="display:none">
+  <span id="saveSt"></span>
   <div class="hs"></div>
   <button class="hbt" id="bPrint" title="Mise en page pour impression (plan d'électricien)">🖨 Impression</button>
 </div>
@@ -257,7 +261,8 @@
   <div class="fh fhs" id="fhS">Tracez une ligne sur le plan pour définir l'échelle</div>
   <div id="ib"></div>
   <div id="pbar">
-    <select id="pPage" class="mep-sel"><option value="plan">Plan</option><option value="check">Check-list</option></select>
+    <select id="pWhat" class="mep-sel" title="Pages à imprimer"><option value="both">Plans + check-list</option><option value="plan">Plans seuls</option><option value="check">Check-list seule</option></select>
+    <select id="pLvls" class="mep-sel" title="Étages à imprimer"><option value="all">Tous les étages</option><option value="cur">Étage courant</option></select>
     <span id="pNav" style="display:none;align-items:center;gap:4px"><button id="pPrev">◀</button><span id="pPgN"></span><button id="pNext">▶</button></span>
     <select id="pFmt" class="mep-sel"><option value="A4">A4</option><option value="A3">A3</option></select>
     <select id="pOri" class="mep-sel"><option value="L">Paysage</option><option value="P">Portrait</option></select>
@@ -269,7 +274,7 @@
     <label class="pp" title="Repères P1, I2… et hauteurs, communs avec la check-list"><input type="checkbox" id="pRep">Repères</label>
     <label class="pp"><input type="checkbox" id="pWir">Gaines</label>
     <label><input type="checkbox" id="pCol">Couleurs</label>
-    <button id="pGo" title="Imprime le plan puis la check-list ; choisissez les pages dans la fenêtre d'impression">🖨 Imprimer</button><button id="pX">✕ Édition</button>
+    <button id="pGo" title="Imprime exactement les pages de l'aperçu (◀ ▶ pour les parcourir)">🖨 Imprimer</button><button id="pX">✕ Édition</button>
   </div>
   <div id="zc"><button id="zOut" title="Dézoomer (−)">−</button><button id="zLbl" title="Réinitialiser (0)">100%</button><button id="zIn" title="Zoomer (+)">+</button><button id="zFit" title="Ajuster au plan (0)">⤢</button></div>
   <div id="mep" style="position:absolute;bottom:13px;left:13px;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);padding:7px 11px;display:none;align-items:center;gap:8px;font-size:11px;z-index:40;white-space:nowrap;"><span style="color:var(--txt2);font-weight:700">Mécaniques :</span><select id="mep1" class="mep-sel"></select><span style="color:var(--txt2)">+</span><select id="mep2" class="mep-sel"></select></div>
@@ -287,6 +292,7 @@
 </div>
 </div>
 <div id="ctx">
+  <button id="ctxRen">✏ Renommer</button>
   <button id="ctxRot">🔄 Pivoter 45°</button>
   <button id="ctxDup">📋 Dupliquer</button>
   <button id="ctxLink">🔗 Relier</button>
@@ -356,6 +362,7 @@ function pushHistory(){
   };
   S.hist.push(JSON.stringify(snap));
   if(S.hist.length>HIST_MAX)S.hist.shift();
+  markDirty();
 }
 function undo(){
   if(!S.hist.length)return;
@@ -429,7 +436,7 @@ function setupZoom(){
 function addLvl(name){pushHistory();S.lvls.push({id:Date.now()+Math.random(),name:name||('Étage '+S.lvls.length),img:null,els:[],wires:[]});S.curLvl=S.lvls.length-1;rLvlTabs();}
 function switchLvl(i){endLink(true);S.curLvl=i;S.view={z:1,x:0,y:0};upZoomLbl();S.wirePs=[];S.linePt=null;S.selEl=null;S.selWire=-1;S.ctxWireIdx=-1;rLvlTabs();render();upPanels();if(S.focusCirc)setFocusCirc(S.focusCirc);}
 function delCurLvl(){if(S.lvls.length<=1){alert('Impossible de supprimer le seul étage.');return;}pushHistory();S.lvls.splice(S.curLvl,1);S.curLvl=Math.min(S.curLvl,S.lvls.length-1);rLvlTabs();render();upPanels();}
-function rLvlTabs(){const c=document.getElementById('lvlt');c.innerHTML='';S.lvls.forEach((l,i)=>{const b=document.createElement('button');b.className='lbt'+(i===S.curLvl?' on':'');b.textContent=l.name;b.ondblclick=()=>{const n=prompt('Nom:',l.name);if(n)l.name=n;rLvlTabs();};b.onclick=()=>switchLvl(i);c.appendChild(b);});}
+function rLvlTabs(){const c=document.getElementById('lvlt');c.innerHTML='';S.lvls.forEach((l,i)=>{const b=document.createElement('button');b.className='lbt'+(i===S.curLvl?' on':'');b.textContent=l.name;b.title='Double-clic pour renommer';b.ondblclick=()=>{const n=prompt("Nom de l'étage :",l.name);if(n&&n.trim()&&n.trim()!==l.name){pushHistory();l.name=n.trim();}rLvlTabs();upPanels();};b.onclick=()=>switchLvl(i);c.appendChild(b);});}
 const lvl=()=>S.lvls[S.curLvl];
 
 // ═══════ CANVAS ═══════
@@ -476,7 +483,7 @@ function setupTB(){
   document.getElementById('iIn').addEventListener('change',e=>{if(e.target.files[0])loadImg(e.target.files[0]);e.target.value='';});
 }
 
-function loadImg(file){const r=new FileReader();r.onload=ev=>{const l=lvl();l.img=ev.target.result;delete bgC[l.id];S.view={z:1,x:0,y:0};upZoomLbl();document.getElementById('chint').style.display='none';render();};r.readAsDataURL(file);}
+function loadImg(file){const r=new FileReader();r.onload=ev=>{const l=lvl();l.img=ev.target.result;delete bgC[l.id];S.view={z:1,x:0,y:0};upZoomLbl();document.getElementById('chint').style.display='none';render();markDirty();};r.readAsDataURL(file);}
 
 // ═══════ CANVAS EVENTS ═══════
 function setupCV(){
@@ -494,7 +501,7 @@ function setupCV(){
       let lt='';
       if(isSw(el.type)){if(gl.length)lt+=' · Commande : '+gl.map(elLabel).join(', ');if(gs.length)lt+=' · Va-et-vient avec : '+gs.map(elLabel).join(', ');}
       else if(gs.length)lt=' · Commandé par : '+gs.map(elLabel).join(', ');
-      tip.textContent=elLabel(el)+(elH(el)!=null?' · h '+elH(el)+' cm':'')+' · '+T[el.type].sec+(cn?' · Circuit: '+cn.name:'')+lt;
+      tip.textContent=elLabel(el)+(el.name?' ('+T[el.type].label+')':'')+(elH(el)!=null?' · h '+elH(el)+' cm':'')+' · '+T[el.type].sec+(cn?' · Circuit: '+cn.name:'')+lt;
     } else tip.style.display='none';
     if(S.linkFrom||(S.tool==='wire'&&S.wirePs.length>0)||(S.tool==='line'&&S.linePt)||(S.tool==='scale'&&S.scaleS&&!S.scaleS.done)) render();
     const ib=document.getElementById('ib');
@@ -525,7 +532,11 @@ function setupCV(){
     else if(S.tool==='scale'){const wp=c2w(imgXf(lvl()),x,y);if(!S.scaleS){S.scaleS={x1:wp.x,y1:wp.y};}else if(!S.scaleS.done){S.scaleS.x2=wp.x;S.scaleS.y2=wp.y;S.scaleS.done=true;document.getElementById('sMod').classList.add('show');setTimeout(()=>document.getElementById('sVal').focus(),50);}}
   });
   cv.addEventListener('mouseup',()=>{S.linkDraw=false;if(S.drag){S.drag=null;upPanels();}});
-  cv.addEventListener('dblclick',()=>{if(S.tool==='wire'&&S.wirePs.length>=2)finWire();});
+  cv.addEventListener('dblclick',e=>{
+    if(S.printMode)return;
+    if(S.tool==='wire'&&S.wirePs.length>=2){finWire();return;}
+    if(S.tool==='select'&&!S.linkFrom){const r=cv.getBoundingClientRect(),el=elAt(e.clientX-r.left,e.clientY-r.top);if(el){S.drag=null;renameEl(el);}}
+  });
   cv.addEventListener('contextmenu',e=>{
     e.preventDefault();if(S.printMode)return;const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;
     if(S.linkFrom){if(S.linkPts.length)S.linkPts.pop();else endLink(true);render();return;}
@@ -533,7 +544,7 @@ function setupCV(){
     const el=elAt(x,y);
     if(el){
       S.ctxEl=el;S.selWire=-1;
-      ['ctxRot','ctxDup','ctxHrEl','ctxDel'].forEach(id=>document.getElementById(id).style.display='');
+      ['ctxRen','ctxRot','ctxDup','ctxHrEl','ctxDel'].forEach(id=>document.getElementById(id).style.display='');
       const cl=document.getElementById('ctxLink');
       cl.style.display=isSw(el.type)||isLoad(el.type)?'':'none';
       document.getElementById('ctxUnlink').style.display=linkedEls(el).length?'':'none';
@@ -547,7 +558,7 @@ function setupCV(){
       const wi=wireAt(x,y);
       if(wi>=0){
         S.ctxWireIdx=wi;S.selWire=wi;render();
-        ['ctxRot','ctxDup','ctxHrEl','ctxDel','ctxLink','ctxUnlink','ctxH'].forEach(id=>document.getElementById(id).style.display='none');
+        ['ctxRen','ctxRot','ctxDup','ctxHrEl','ctxDel','ctxLink','ctxUnlink','ctxH'].forEach(id=>document.getElementById(id).style.display='none');
         document.getElementById('ctxWireDel').style.display='';
         const w=lvl().wires[wi];fillCtxCirc(w.circId!=null?String(w.circId):'',v=>{w.circId=v||null;});
         showCtx(e.clientX,e.clientY);
@@ -647,7 +658,16 @@ function setFocusCirc(cid){
   render();renderCP();
 }
 function endLink(silent){S.linkFrom=null;S.linkPts=[];S.linkDraw=false;const h=document.getElementById('fhK');if(h)h.style.display='none';if(!silent)render();}
-function elLabel(el){let n=0;for(const lv of S.lvls)for(const e of lv.els){if(e.type===el.type)n++;if(e===el)return T[el.type].label+' #'+n;}return T[el.type].label;}
+// libellé par défaut (type + numéro), puis libellé affiché : le nom donné par l'utilisateur s'il existe
+function elDefLabel(el){let n=0;for(const lv of S.lvls)for(const e of lv.els){if(e.type===el.type)n++;if(e===el)return T[el.type].label+' #'+n;}return T[el.type].label;}
+function elLabel(el){return el.name||elDefLabel(el);}
+function renameEl(el){
+  if(!el||!T[el.type])return;
+  const v=prompt(`Nom de « ${elLabel(el)} » (${T[el.type].label}).\nVide = nom par défaut (${elDefLabel(el)}).`,el.name||'');
+  if(v===null)return;const n=v.trim();
+  if(n===(el.name||''))return;
+  pushHistory();if(n)el.name=n;else delete el.name;render();upPanels();
+}
 
 // ═══════ RENDER ═══════
 // Repère de sélection : anneau blanc cerclé de noir + halo pulsé (lisible sur fond clair comme sombre)
@@ -669,8 +689,9 @@ function planSrc(l,img){
   for(let i=0;i<a.length;i+=4){a[i]=255-a[i];a[i+1]=255-a[i+1];a[i+2]=255-a[i+2];}
   g.putImageData(d,0,0);img._inv=c;return c;
 }
-function drawEl(type,x,y,rot,sel,circColor,meca1,meca2){
+function drawEl(type,x,y,rot,sel,circColor,meca1,meca2,name){
   const t=T[type];if(!t)return; // skip unknown types (old files)
+  const lbl=name||t.label;
   // Pastille sombre sous l'icône : garde le contraste quel que soit le fond du plan
   ctx.save();ctx.beginPath();ctx.arc(x,y,16,0,Math.PI*2);ctx.fillStyle='rgba(12,12,18,.86)';ctx.fill();
   ctx.lineWidth=sel?2:1.2;ctx.strokeStyle=sel?t.color:t.color+'66';ctx.stroke();ctx.restore();
@@ -763,8 +784,8 @@ function drawEl(type,x,y,rot,sel,circColor,meca1,meca2){
   }
   ctx.restore();
   ctx.save();ctx.font=(sel?'bold 10px':'600 9px')+' Syne,sans-serif';ctx.textAlign='center';ctx.lineJoin='round';
-  ctx.lineWidth=3.5;ctx.strokeStyle='rgba(12,12,18,.9)';ctx.strokeText(t.label,x,y+(sel?36:27));
-  ctx.fillStyle=sel?'#ffffff':t.color;ctx.fillText(t.label,x,y+(sel?36:27));ctx.restore();
+  ctx.lineWidth=3.5;ctx.strokeStyle='rgba(12,12,18,.9)';ctx.strokeText(lbl,x,y+(sel?36:27));
+  ctx.fillStyle=sel?'#ffffff':t.color;ctx.fillText(lbl,x,y+(sel?36:27));ctx.restore();
   if(circColor){ctx.beginPath();ctx.arc(x+12,y-12,5,0,Math.PI*2);ctx.fillStyle=circColor;ctx.fill();ctx.strokeStyle='#0c0c12';ctx.lineWidth=2;ctx.stroke();}
 }
 
@@ -856,7 +877,7 @@ function render(){
     ctx.fillStyle=g.col;ctx.fillText(g.txt,g.mx,g.my);ctx.restore();
   });
 
-  const drawOne=el=>{if(S.hiddenCircs[String(S.assgn[el.id])])return;const cp=w2c(xf,el.x,el.y);drawEl(el.type,cp.x,cp.y,el.rot,el===S.selEl,cmap[S.assgn[el.id]]||null,el.meca1,el.meca2);};
+  const drawOne=el=>{if(S.hiddenCircs[String(S.assgn[el.id])])return;const cp=w2c(xf,el.x,el.y);drawEl(el.type,cp.x,cp.y,el.rot,el===S.selEl,cmap[S.assgn[el.id]]||null,el.meca1,el.meca2,el.name);};
   l.els.forEach(el=>{if(el!==S.selEl&&!inFc(el))drawOne(el);});
   if(S.selEl&&l.els.includes(S.selEl)&&!inFc(S.selEl))drawOne(S.selEl);
   // anneaux jaunes sur les éléments reliés ; en mode liaison, cercles pointillés sur les candidats
@@ -882,7 +903,7 @@ function render(){
 // Rendu « plan d'électricien » : plan estompé en gris, symboles normalisés noirs et petits,
 // appareillages proches alignés côte à côte (aimant), commandes en arcs pointillés,
 // repère de circuit (C1, C2…), légende et cartouche. Ne modifie pas le projet.
-const PDEF={page:'plan',fmt:'A3',ori:'L',sym:4,mag:true,magD:8,plan:30,lnk:true,rep:true,wir:false,col:false};
+const PDEF={what:'both',lvls:'all',fmt:'A3',ori:'L',sym:4,mag:true,magD:8,plan:30,lnk:true,rep:true,wir:false,col:false};
 // Hauteur de pose (cm, axe de la boîte depuis le sol fini) : valeur saisie, sinon usage courant
 const DEFH={prise16:30,prise20:30,prise_double:30,prise_rj45:30,inter_simple:110,inter_double:110,inter_volet:110,applique:180};
 const hasH=t=>t!=='luminaire'&&t!=='tableau';
@@ -895,7 +916,7 @@ function repMap(l){
     .forEach(e=>{const p=REPP[e.type];n[p]=(n[p]||0)+1;m.set(e,p+n[p]);});
   return m;
 }
-const pc=()=>{const o={...PDEF,...(S.cfg.print||{})};if(o.page!=='check')o.page='plan';return o;};
+const pc=()=>{const o={...PDEF,...(S.cfg.print||{})};delete o.page;if(!['both','plan','check'].includes(o.what))o.what='both';if(o.lvls!=='cur')o.lvls='all';return o;};
 const WALL=new Set(['prise16','prise_double','prise20','inter_simple','inter_double','inter_volet','prise_rj45']);
 function paperMM(o){const[a,b]=o.fmt==='A4'?[297,210]:[420,297];return o.ori==='P'?[b,a]:[a,b];}
 // encombrement d'un symbole, en tailles de picto (sert à l'alignement)
@@ -940,8 +961,8 @@ function psym(g,type,u,el){
   }
 }
 // Dessine la feuille complète sur g (origine = coin haut-gauche du papier), k = px par mm
-function drawSheet(g,k,o){
-  const[W,H]=paperMM(o),l=lvl(),M=10*k,LG=66*k;
+function drawSheet(g,k,o,l){
+  const[W,H]=paperMM(o),M=10*k,LG=66*k;
   const cmap={},cnum={};S.circs.forEach((c,i)=>{cmap[c.id]=CC[i%CC.length];cnum[c.id]='C'+(i+1);});
   g.save();g.fillStyle='#fff';g.fillRect(0,0,W*k,H*k);
   // zone du plan (à gauche de la colonne légende)
@@ -1095,8 +1116,8 @@ const STEPS=[
 // étapes sans objet : un volet n'a ni boîte ni mécanisme
 const naStep=(t,i)=>(t==='volet_roulant'||t==='volet_battant')&&(i===0||i===4);
 const REPO=['P','RJ','I','IV','L','V'];
-function checkRows(){
-  const l=lvl(),rm=repMap(l);
+function checkRows(l){
+  const rm=repMap(l);
   const els=l.els.filter(e=>rm.has(e)&&!S.hiddenCircs[String(S.assgn[e.id])]);
   const key=e=>{const r=rm.get(e),p=r.replace(/\d+$/,'');return REPO.indexOf(p)*1e4+parseInt(r.slice(p.length));};
   const rows=[];
@@ -1106,9 +1127,9 @@ function checkRows(){
   return rows;
 }
 const CK={top:40,foot:12,row:8,head:7}; // mm
-function checkPages(o){
+function checkPages(o,l){
   const[,H]=paperMM(o),avail=H-10-CK.top-CK.foot,pages=[[]];let y=0;
-  checkRows().forEach((r,i,a)=>{
+  checkRows(l).forEach((r,i,a)=>{
     const h=r.head!==undefined?CK.head:CK.row;
     // un titre de circuit ne reste pas seul en bas de page
     const need=r.head!==undefined&&a[i+1]?h+CK.row:h;
@@ -1117,23 +1138,29 @@ function checkPages(o){
   });
   return pages;
 }
-function drawChecklist(g,k,o,pi,pages){
-  const[W,H]=paperMM(o),l=lvl(),M=10,rows=pages[pi]||[];
+function drawChecklist(g,k,o,pi,pages,l){
+  const[W,H]=paperMM(o),M=10,rows=pages[pi]||[];
   const mm=v=>v*k,F=(w,sz)=>`${w} ${sz*k}px Syne,sans-serif`;
   g.save();g.fillStyle='#fff';g.fillRect(0,0,mm(W),mm(H));g.fillStyle='#000';g.strokeStyle='#000';
   const name=S.fileHandle?S.fileHandle.name.replace(/\.json$/i,''):'Plan électrique';
-  // en-tête
+  // en-tête : titre, puis l'étage en cartouche noir bien visible
   g.textBaseline='alphabetic';g.textAlign='left';
-  g.font=F(800,5.2);g.fillText('Check-list chantier · '+l.name,mm(M),mm(M+6));
+  g.font=F(800,5.2);g.fillText('Check-list chantier',mm(M),mm(M+6));
+  const tw=g.measureText('Check-list chantier').width;
+  g.font=F(800,4.4);const lw=g.measureText(l.name).width+mm(6),lx=mm(M+5)+tw;
+  g.beginPath();g.roundRect(lx,mm(M+0.6),lw,mm(7.2),mm(1.2));g.fill();
+  g.fillStyle='#fff';g.fillText(l.name,lx+mm(3),mm(M+5.9));g.fillStyle='#000';
   g.font=F(500,2.6);g.fillStyle='#444';g.textAlign='right';
-  g.fillText(`${name} · ${new Date().toLocaleDateString('fr-FR')} · page ${pi+1}/${pages.length}`,mm(W-M),mm(M+6));
+  g.fillText(`${name} · ${new Date().toLocaleDateString('fr-FR')} · ${l.name} · page ${pi+1}/${pages.length}`,mm(W-M),mm(M+6));
   g.textAlign='left';g.fillStyle='#000';g.font=F(500,2.4);
   g.fillText('Faites une croix dans la case quand l\'étape est faite. Une case vide = reste à faire. Repères identiques au plan imprimé ; hauteur = axe de la boîte depuis le sol fini (cm).',mm(M),mm(M+12),mm(W-2*M));
   const half=Math.ceil(STEPS.length/2),cw=(W-2*M)/2;
   STEPS.forEach(([n,d],i)=>{const cx=M+(i<half?0:cw),cy=M+18+(i%half)*4.6;
     g.font=F(700,2.4);g.fillText(n,mm(cx),mm(cy));const w=g.measureText(n+' ').width;g.font=F(400,2.4);g.fillText('— '+d,mm(cx)+w,mm(cy),mm(cw-4)-w);});
   // colonnes
-  const fixed=[['Repère',15],['Point',40],['Circ.',11],['H (cm)',13]],sw=13;
+  // la colonne « Point » s'élargit (noms personnalisés) si la page le permet
+  const sw=13,free=W-2*M-(15+40+11+13)-sw*STEPS.length;
+  const fixed=[['Repère',15],['Point',40+Math.max(0,Math.min(30,(free-40)/2))],['Circ.',11],['H (cm)',13]];
   const notesW=Math.max(15,W-2*M-fixed.reduce((a,c)=>a+c[1],0)-sw*STEPS.length);
   const cols=[...fixed,...STEPS.map(s=>[s[0],sw]),['Notes',notesW]];
   const xs=[M];cols.forEach(c=>xs.push(xs.at(-1)+c[1]));const R=xs.at(-1);
@@ -1163,7 +1190,10 @@ function drawChecklist(g,k,o,pi,pages){
     g.save();g.translate(mm(xs[0]+4),mm(y+h/2));g.strokeStyle='#000';g.fillStyle='#000';g.lineWidth=mm(.22);psym(g,e.type,mm(3.6)/Math.max(1,symW(e.type)/1.3),e);g.restore();
     g.fillStyle='#000';g.textAlign='left';g.font=F(800,3);g.fillText(r.rep,mm(xs[0]+8),mm(y+h/2));
     let lab=t.label;if(e.type==='prise_double'){const mn={elec:'PC',rj45:'RJ45',hdmi:'HDMI'};lab+=` (${mn[e.meca1||'elec']}+${mn[e.meca2||'elec']})`;}
-    g.font=F(500,2.4);g.fillText(lab,mm(xs[1]+1.5),mm(y+h/2),mm(cols[1][1]-3));
+    if(e.name){
+      g.font=F(700,2.5);g.fillText(e.name,mm(xs[1]+1.5),mm(y+h/2-1.3),mm(cols[1][1]-3));
+      g.font=F(400,2);g.fillStyle='#555';g.fillText(lab,mm(xs[1]+1.5),mm(y+h/2+1.7),mm(cols[1][1]-3));g.fillStyle='#000';
+    }else{g.font=F(500,2.4);g.fillText(lab,mm(xs[1]+1.5),mm(y+h/2),mm(cols[1][1]-3));}
     const ci=S.circs.findIndex(c=>String(c.id)===String(S.assgn[e.id]));
     g.textAlign='center';g.font=F(600,2.4);g.fillText(ci>=0?'C'+(ci+1):'',mm(xs[2]+cols[2][1]/2),mm(y+h/2));
     const hv=hasH(e.type)?elH(e):null;g.font=F(800,3);g.fillText(hv!=null?String(hv):'',mm(xs[3]+cols[3][1]/2),mm(y+h/2));
@@ -1178,41 +1208,64 @@ function drawChecklist(g,k,o,pi,pages){
   // pied
   const n=pages.flat().filter(r=>r.el).length;
   g.font=F(500,2.3);g.fillStyle='#444';g.textAlign='left';g.textBaseline='alphabetic';
-  g.fillText(`${n} points · ${STEPS.length} étapes chacun · page ${pi+1}/${pages.length}`,mm(M),mm(H-M));
+  g.fillText(`${l.name} · ${n} points · ${STEPS.length} étapes chacun · page ${pi+1}/${pages.length}`,mm(M),mm(H-M));
   g.restore();
 }
-// Pages : l'aperçu montre le plan ou la check-list ; l'impression sort tout (all=true),
-// l'utilisateur choisit ensuite les pages dans la fenêtre d'impression du système
-function printPages(o,all){
+// Pages à imprimer : pour chaque étage retenu, son plan puis sa check-list (selon « what »).
+// L'aperçu parcourt exactement ces pages ; l'impression les sort toutes.
+function printLvls(o){
+  if(o.lvls==='cur')return[lvl()];
+  const ls=S.lvls.filter(l=>l.img||l.els.length);
+  return ls.length?ls:[lvl()];
+}
+function printPages(o){
   const out=[];
-  if(all||o.page!=='check')out.push(g=>(k=>drawSheet(g,k,o)));
-  if(all||o.page==='check'){const pg=checkPages(o);pg.forEach((_,i)=>out.push(g=>(k=>drawChecklist(g,k,o,i,pg))));}
+  printLvls(o).forEach(l=>{
+    if(o.what!=='check')out.push({l,kind:'plan',draw:g=>k=>drawSheet(g,k,o,l)});
+    if(o.what!=='plan'&&checkRows(l).length){const pg=checkPages(o,l);pg.forEach((_,i)=>out.push({l,kind:'check',draw:g=>k=>drawChecklist(g,k,o,i,pg,l)}));}
+  });
   return out;
 }
+// première page de l'étage affiché (l'aperçu s'ouvre dessus)
+function pgOfCur(o){return Math.max(0,printPages(o).findIndex(p=>p.l===lvl()));}
 // Aperçu à l'écran : la feuille posée sur un fond gris
 function renderPrint(){
   const o=pc(),[W,H]=paperMM(o),top=document.getElementById('pbar').offsetHeight+22,pad=22,pages=printPages(o);
+  ctx.fillStyle='#4a4a55';ctx.fillRect(0,0,cv.width,cv.height);
+  const nav=document.getElementById('pNav');nav.style.display=pages.length>1?'flex':'none';
+  document.getElementById('pGo').disabled=!pages.length;
+  if(!pages.length){
+    ctx.fillStyle='#ddd';ctx.font='600 14px Syne,sans-serif';ctx.textAlign='center';
+    ctx.fillText('Rien à imprimer : aucun point repéré pour la check-list.',cv.width/2,cv.height/2);ctx.textAlign='left';return;
+  }
   S.pg=Math.max(0,Math.min(S.pg||0,pages.length-1));
   const k=Math.min((cv.width-2*pad)/W,(cv.height-top-pad)/H);
-  ctx.fillStyle='#4a4a55';ctx.fillRect(0,0,cv.width,cv.height);
   const x=(cv.width-W*k)/2,y=top+(cv.height-top-pad-H*k)/2;
   ctx.save();ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=20;ctx.shadowOffsetY=4;ctx.fillStyle='#fff';ctx.fillRect(x,y,W*k,H*k);ctx.restore();
-  ctx.save();ctx.translate(x,y);pages[S.pg](ctx)(k);ctx.restore();
-  const nav=document.getElementById('pNav');nav.style.display=pages.length>1?'flex':'none';
-  document.getElementById('pPgN').textContent=`${S.pg+1}/${pages.length}`;
+  ctx.save();ctx.translate(x,y);pages[S.pg].draw(ctx)(k);ctx.restore();
+  document.getElementById('pPgN').textContent=`${S.pg+1}/${pages.length} · ${pages[S.pg].l.name}`;
 }
-function doPrint(){
+// attend que l'image de plan d'un étage soit chargée (les étages non visités ne le sont pas encore)
+function loadPlanImg(l){
+  return new Promise(res=>{
+    if(!l.img||planImg(l))return res();
+    const im=bgC[l.id];im.addEventListener('load',()=>res(),{once:true});im.addEventListener('error',()=>res(),{once:true});
+  });
+}
+async function doPrint(){
   const o=pc(),[W,H]=paperMM(o),k=8; // ≈ 200 dpi
+  const pages=printPages(o);if(!pages.length)return;
+  await Promise.all([...new Set(pages.map(p=>p.l))].map(loadPlanImg));
   document.getElementById('pgStyle').textContent=`@page{size:${o.fmt} ${o.ori==='P'?'portrait':'landscape'};margin:0}`;
   const out=document.getElementById('printOut');out.innerHTML='';
-  const imgs=printPages(o,true).map(draw=>{
-    const c=document.createElement('canvas');c.width=Math.round(W*k);c.height=Math.round(H*k);draw(c.getContext('2d'))(k);
+  const imgs=pages.map(p=>{
+    const c=document.createElement('canvas');c.width=Math.round(W*k);c.height=Math.round(H*k);p.draw(c.getContext('2d'))(k);
     const im=new Image();out.appendChild(im);return new Promise(r=>{im.onload=r;im.src=c.toDataURL('image/png');});
   });
-  Promise.all(imgs).then(()=>setTimeout(()=>window.print(),50));
+  await Promise.all(imgs);setTimeout(()=>window.print(),50);
 }
 function setPrintMode(on){
-  S.printMode=on;S.pg=0;
+  S.printMode=on;S.pg=on?pgOfCur(pc()):0;
   if(on){endLink(true);S.selEl=null;S.selWire=-1;S.wirePs=[];S.linePt=null;hideCtx();if(S.focusCirc)setFocusCirc(null);setTool('select');}
   document.getElementById('app').classList.toggle('printing',on);
   document.getElementById('pbar').style.display=on?'flex':'none';
@@ -1222,13 +1275,14 @@ function setPrintMode(on){
 }
 function syncPbar(){
   const o=pc(),$=id=>document.getElementById(id);
-  $('pPage').value=o.page;$('pFmt').value=o.fmt;$('pOri').value=o.ori;
+  $('pWhat').value=o.what;$('pLvls').value=o.lvls;$('pFmt').value=o.fmt;
+  $('pLvls').options[1].textContent='Étage : '+lvl().name;$('pLvls').style.display=S.lvls.length>1?'':'none';$('pOri').value=o.ori;
   $('pSym').value=o.sym;$('pMag').checked=o.mag;$('pMagD').value=o.magD;
   $('pPlan').value=o.plan;$('pLnk').checked=o.lnk;$('pRep').checked=o.rep;
   $('pWir').checked=o.wir;$('pCol').checked=o.col;
   $('pMagD').disabled=!o.mag;
   // réglages du plan inutiles sur la seule check-list
-  document.querySelectorAll('#pbar .pp').forEach(e=>e.style.display=o.page==='check'?'none':'');
+  document.querySelectorAll('#pbar .pp').forEach(e=>e.style.display=o.what==='check'?'none':'');
 }
 function setupPrint(){
   document.getElementById('bPrint').onclick=()=>setPrintMode(!S.printMode);
@@ -1236,8 +1290,14 @@ function setupPrint(){
   document.getElementById('pGo').onclick=doPrint;
   document.getElementById('pPrev').onclick=()=>{S.pg--;render();};
   document.getElementById('pNext').onclick=()=>{S.pg++;render();};
-  const bind=(id,key,get)=>document.getElementById(id).addEventListener('input',e=>{S.cfg.print={...pc(),[key]:get(e.target)};if(key==='page')S.pg=0;syncPbar();render();});
-  bind('pPage','page',t=>t.value);bind('pFmt','fmt',t=>t.value);bind('pOri','ori',t=>t.value);
+  const bind=(id,key,get)=>document.getElementById(id).addEventListener('input',e=>{
+    const cur=printPages(pc())[S.pg];
+    S.cfg.print={...pc(),[key]:get(e.target)};
+    // reste sur le même étage (et la même sorte de page si possible) après un changement
+    if(cur){const pg=printPages(pc());let i=pg.findIndex(p=>p.l===cur.l&&p.kind===cur.kind);if(i<0)i=pg.findIndex(p=>p.l===cur.l);S.pg=i<0?0:i;}
+    syncPbar();render();markDirty();
+  });
+  bind('pWhat','what',t=>t.value);bind('pLvls','lvls',t=>t.value);bind('pFmt','fmt',t=>t.value);bind('pOri','ori',t=>t.value);
   bind('pSym','sym',t=>+t.value);bind('pMag','mag',t=>t.checked);bind('pMagD','magD',t=>+t.value);
   bind('pPlan','plan',t=>+t.value);bind('pLnk','lnk',t=>t.checked);bind('pRep','rep',t=>t.checked);
   bind('pWir','wir',t=>t.checked);bind('pCol','col',t=>t.checked);
@@ -1255,6 +1315,7 @@ document.getElementById('sMod').addEventListener('keydown',e=>{if(e.key==='Enter
 
 // ═══════ CTX MENU ═══════
 function setupCtx(){
+  document.getElementById('ctxRen').onclick=()=>{const el=S.ctxEl;hideCtx();renameEl(el);};
   document.getElementById('ctxRot').onclick=()=>{if(S.ctxEl){pushHistory();S.ctxEl.rot=(S.ctxEl.rot+45)%360;render();}hideCtx();};
   document.getElementById('ctxDup').onclick=()=>{if(S.ctxEl)placeEl(S.ctxEl.type,S.ctxEl.x+22,S.ctxEl.y+22);hideCtx();};
   document.getElementById('ctxLink').onclick=()=>{if(S.ctxEl)startLink(S.ctxEl);hideCtx();};
@@ -1315,7 +1376,7 @@ function countAll(){const c={};Object.keys(T).forEach(k=>c[k]=0);S.lvls.forEach(
 function linkMtrs(){return S.scale?linkPx()/S.scale:null;}
 function wireMtrs(){let px=linkPx();S.lvls.forEach(l=>l.wires.forEach(w=>{const pts=w.pts||w;for(let i=1;i<pts.length;i++){const dx=pts[i].x-pts[i-1].x,dy=pts[i].y-pts[i-1].y;px+=Math.sqrt(dx*dx+dy*dy);}}));return S.scale?px/S.scale:null;}
 
-function upPanels(){renderBP();if(document.getElementById('pC').style.display!=='none')renderCP();selHighlight();}
+function upPanels(){markDirty();renderBP();if(document.getElementById('pC').style.display!=='none')renderCP();selHighlight();}
 
 function renderBP(){
   const cnt=countAll(),wm=wireMtrs(),mg=1+S.cfg.margin/100;let h='';
@@ -1400,6 +1461,7 @@ function allElCnt(){let n=0;S.lvls.forEach(l=>l.els.forEach(el=>{if(el.type!=='t
 function esc(s){return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 function renderCP(){
+  markDirty();
   const p=document.getElementById('pC');if(!p||p.style.display==='none')return;
   const cmap={};S.circs.forEach((c,i)=>cmap[c.id]=CC[i%CC.length]);
   const tot=allElCnt(),asgd=Object.keys(S.assgn).length;
@@ -1474,7 +1536,7 @@ function renderCP(){
   const elLabels={};const elTypeIdx={};
   S.lvls.forEach(lv=>lv.els.filter(el=>el.type!=='tableau').forEach(el=>{
     elTypeIdx[el.type]=(elTypeIdx[el.type]||0)+1;
-    elLabels[el.id]=`${T[el.type].label} #${elTypeIdx[el.type]}`;
+    elLabels[el.id]=el.name||`${T[el.type].label} #${elTypeIdx[el.type]}`;
   }));
 
   // 2) Group elements by assigned circuit
@@ -1497,7 +1559,7 @@ function renderCP(){
   };
 
   // 4) Render one element row
-  const mkRow=(el)=>`<div class="arow" data-elid="${el.id}"><div class="adot" style="background:${T[el.type].color}"></div><span class="aname">${elLabels[el.id]}</span>${mkDrop(el)}</div>`;
+  const mkRow=(el)=>`<div class="arow" data-elid="${el.id}"><div class="adot" style="background:${T[el.type].color}"></div><span class="aname" title="${esc(T[el.type].label)} · double-clic pour renommer">${esc(elLabels[el.id])}</span>${mkDrop(el)}</div>`;
 
   // 5) Render groups
   S.circs.forEach(c=>{
@@ -1540,6 +1602,7 @@ function renderCP(){
       S.selEl=found;S.selWire=-1;if(S.focusCirc)setFocusCirc(null);
       render();selHighlight();
     };
+    row.querySelector('.aname').ondblclick=()=>{const eid=row.dataset.elid;for(const lv of S.lvls){const el=lv.els.find(e=>String(e.id)===eid);if(el){renameEl(el);return;}}};
   });
   p.querySelectorAll('.cdd').forEach(cdd=>{
     const eid=cdd.dataset.elid;
@@ -1565,7 +1628,9 @@ function renderCP(){
     });
   });
   p.querySelectorAll('.cdfn').forEach(inp=>{
-    inp.oninput=()=>{const c=S.circs.find(x=>String(x.id)===inp.dataset.cid);if(c)c.name=inp.value;};
+    inp.onfocus=()=>{inp._h=false;};
+    inp.oninput=()=>{const c=S.circs.find(x=>String(x.id)===inp.dataset.cid);if(!c)return;if(!inp._h){pushHistory();inp._h=true;}c.name=inp.value;markDirty();};
+    inp.onkeydown=e=>{if(e.key==='Enter')inp.blur();};
     inp.onblur=()=>renderCP();
   });
   p.querySelectorAll('.ceye').forEach(btn=>{btn.onclick=()=>{const cid=btn.dataset.cid;if(S.hiddenCircs[cid])delete S.hiddenCircs[cid];else S.hiddenCircs[cid]=true;render();renderCP();};});
@@ -1603,15 +1668,15 @@ function setupSettings(){
   </div>`;
   p.querySelector('#sM').oninput=e=>{S.cfg.margin=+e.target.value;p.querySelector('#vM').textContent=S.cfg.margin+'%';upPanels();};
   p.querySelector('#sP').oninput=e=>{S.cfg.maxP16=+e.target.value;p.querySelector('#vP').textContent=S.cfg.maxP16;upPanels();};
-  p.querySelector('#sA').oninput=e=>{S.cfg.planAlpha=+e.target.value;p.querySelector('#vA').textContent=S.cfg.planAlpha+'%';render();};
-  p.querySelector('#sI').onchange=e=>{S.cfg.planInv=e.target.checked;render();};
+  p.querySelector('#sA').oninput=e=>{S.cfg.planAlpha=+e.target.value;p.querySelector('#vA').textContent=S.cfg.planAlpha+'%';render();markDirty();};
+  p.querySelector('#sI').onchange=e=>{S.cfg.planInv=e.target.checked;render();markDirty();};
   p.querySelector('#sL').oninput=e=>{S.cfg.maxLum=+e.target.value;p.querySelector('#vL').textContent=S.cfg.maxLum;upPanels();};
 }
 
 // ═══════ IDB FILE HANDLE PERSISTENCE ═══════
 const IDB_NAME='planelec',IDB_STORE='handles';
 function openIDB(){return new Promise((res,rej)=>{const r=indexedDB.open(IDB_NAME,1);r.onupgradeneeded=e=>e.target.result.createObjectStore(IDB_STORE);r.onsuccess=e=>res(e.target.result);r.onerror=rej;});}
-async function idbPut(key,val){try{const db=await openIDB();await new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).put(val,key);tx.oncomplete=()=>{db.close();res();};tx.onerror=rej;});}catch(e){}}
+async function idbPut(key,val){try{const db=await openIDB();await new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).put(val,key);tx.oncomplete=()=>{db.close();res();};tx.onerror=rej;});return true;}catch(e){return false;}}
 async function idbGet(key){try{const db=await openIDB();return await new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readonly');const r=tx.objectStore(IDB_STORE).get(key);r.onsuccess=()=>{db.close();res(r.result);};r.onerror=rej;});}catch(e){return null;}}
 
 // ═══════ HEADER ═══════
@@ -1622,17 +1687,65 @@ function loadData(d){
   S.lvls=d.lvls;normLinks(S.lvls);S.focusCirc=null;document.getElementById('fhF').style.display='none';
   // v3 → v4 migration: convert wire point arrays to {pts,circId} objects
   if(d.v===3){S.lvls.forEach(l=>{l.wires=l.wires.map(w=>Array.isArray(w)?{pts:w,circId:null}:w);});}
-  S.curLvl=0;S.view={z:1,x:0,y:0};upZoomLbl();
+  S.curLvl=0;S.view={z:1,x:0,y:0};S.selEl=null;S.selWire=-1;upZoomLbl();
   Object.keys(bgC).forEach(k=>delete bgC[k]);rLvlTabs();render();setupSettings();upPanels();
+}
+
+// ═══════ SAUVEGARDE AUTOMATIQUE ═══════
+// Chaque modification est conservée dans le navigateur (IndexedDB) et rechargée à la prochaine ouverture.
+// Si un fichier JSON est ouvert et que le navigateur autorise l'écriture, il est aussi réécrit.
+const AS={ready:false,dirty:false,t:null,busy:false,last:'',ts:0,file:false,idb:true};
+function markDirty(){if(!AS.ready)return;AS.dirty=true;clearTimeout(AS.t);AS.t=setTimeout(autoSave,1000);upSaveSt();}
+async function autoSave(){
+  clearTimeout(AS.t);AS.t=null;
+  if(!AS.ready)return;
+  if(AS.busy){AS.t=setTimeout(autoSave,500);return;}
+  AS.busy=true;
+  try{
+    const json=JSON.stringify(projectData(),null,2);
+    if(json!==AS.last){
+      AS.idb=await idbPut('autosave',{json,name:S.fileHandle?S.fileHandle.name:null,ts:Date.now()});
+      AS.file=false;
+      if(S.fileHandle){
+        try{
+          if(await S.fileHandle.queryPermission({mode:'readwrite'})==='granted'){
+            const w=await S.fileHandle.createWritable();await w.write(json);await w.close();AS.file=true;
+          }
+        }catch(e){console.warn('Sauvegarde fichier impossible',e);}
+      }
+      AS.last=json;AS.ts=Date.now();
+    }
+    AS.dirty=false;
+  }finally{AS.busy=false;upSaveSt();}
+}
+function upSaveSt(){
+  const s=document.getElementById('saveSt');if(!s)return;
+  const hm=AS.ts?new Date(AS.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
+  if(AS.dirty){s.className='dirty';s.textContent='● enregistrement…';s.title='Modifications en cours d\'enregistrement automatique';return;}
+  if(!AS.ts){s.className='';s.textContent='';return;}
+  if(!AS.idb&&!AS.file){s.className='dirty';s.textContent='⚠ sauvegarde auto indisponible';s.title='Le navigateur refuse le stockage local pour cette page : pensez à 💾 Sauvegarder (Ctrl+S).';}
+  else if(S.fileHandle&&AS.file){s.className='ok';s.textContent=`✓ ${S.fileHandle.name} · ${hm}`;s.title='Enregistré automatiquement dans le fichier et dans le navigateur';}
+  else if(S.fileHandle){s.className='warn';s.textContent=`✓ auto ${hm} · fichier à mettre à jour (Ctrl+S)`;s.title=`Conservé dans le navigateur. Le navigateur demande votre accord pour écrire dans ${S.fileHandle.name} : cliquez 💾 Sauvegarder une fois, ensuite l'écriture sera automatique.`;}
+  else{s.className='ok';s.textContent=`✓ auto ${hm}`;s.title='Conservé automatiquement dans ce navigateur et rechargé à la prochaine ouverture. 💾 Sauvegarder pour écrire un fichier JSON.';}
+}
+// avant de quitter / changer d'onglet : enregistre tout de suite ce qui est en attente
+window.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&AS.dirty)autoSave();});
+window.addEventListener('pagehide',()=>{if(AS.dirty)autoSave();});
+function newProject(){
+  if(!confirm('Nouveau projet vide ?\nLe projet actuel n\'est conservé que s\'il a été sauvegardé dans un fichier.'))return;
+  S.fileHandle=null;idbPut('lastHandle',null);
+  loadData({v:5,scale:null,cfg:{},circs:[],assgn:{},lvls:[{id:Date.now()+Math.random(),name:'RDC',img:null,els:[],wires:[]}]});
+  S.hist=[];upHdrTitle();
 }
 
 async function saveProject(){
   const json=JSON.stringify(projectData(),null,2);
+  const done=()=>{AS.last=json;AS.ts=Date.now();AS.file=true;AS.dirty=false;clearTimeout(AS.t);idbPut('autosave',{json,name:S.fileHandle.name,ts:AS.ts});flashSave();upHdrTitle();upSaveSt();};
   if(S.fileHandle){
     try{
       const w=await S.fileHandle.createWritable();
       await w.write(json);await w.close();
-      flashSave();
+      done();
       return;
     }catch(e){if(e.name==='NotAllowedError'){}else{console.error(e);}}
   }
@@ -1643,7 +1756,7 @@ async function saveProject(){
       const w=await S.fileHandle.createWritable();
       await w.write(json);await w.close();
       await idbPut('lastHandle',S.fileHandle);
-      flashSave();upHdrTitle();
+      done();
       return;
     }catch(e){if(e.name==='AbortError')return;console.error(e);}
   }
@@ -1679,6 +1792,7 @@ function setupHdr(){
   document.getElementById('bAddLvl').onclick=()=>{const n=prompt('Nom:',`Étage ${S.lvls.length}`);if(n!==null)addLvl(n);};
   document.getElementById('bDelLvl').onclick=delCurLvl;
   document.getElementById('bSave').onclick=saveProject;
+  document.getElementById('bNew').onclick=newProject;
   // Charger : File System Access API si dispo, sinon input classic
   const doOpenPicker=async()=>{
     if(window.showOpenFilePicker){
@@ -1712,7 +1826,8 @@ function setupHdr(){
   document.getElementById('bLoadNew').onclick=doOpenPicker;
   document.getElementById('jIn').onchange=e=>{
     const f=e.target.files[0];if(!f)return;
-    S.fileHandle=null; // input classique ne donne pas de handle
+    S.fileHandle=null;idbPut('lastHandle',null); // input classique ne donne pas de handle
+    upHdrTitle();
     const r=new FileReader();r.onload=ev=>{
       try{loadData(JSON.parse(ev.target.result));}catch(err){alert('Erreur: '+err.message);}
     };r.readAsText(f);e.target.value='';
@@ -1740,14 +1855,15 @@ async function init(){
   addLvl('RDC');
   setupTB();setupCV();setupZoom();setupPTabs();setupSettings();setupCtx();setupHdr();setupMep();setupPrint();
   setTool('select');resCV();upPanels();
-  // Try to restore last file handle from IndexedDB
+  // Reprend le dernier projet enregistré automatiquement, et le fichier dont il vient
   try{
-    const h=await idbGet('lastHandle');
-    if(h&&h.kind==='file'){
-      const perm=await h.queryPermission({mode:'read'});
-      if(perm==='granted'){S.fileHandle=h;upHdrTitle();}
-    }
-  }catch(e){}
+    const a=await idbGet('autosave'),h=await idbGet('lastHandle');
+    if(a&&a.json){
+      loadData(JSON.parse(a.json));AS.last=a.json;AS.ts=a.ts||0;
+      if(h&&h.kind==='file'&&h.name===a.name){S.fileHandle=h;AS.file=await h.queryPermission({mode:'readwrite'})==='granted';}
+    }else if(h&&h.kind==='file'&&await h.queryPermission({mode:'read'})==='granted')S.fileHandle=h;
+  }catch(e){console.warn('Reprise de la sauvegarde automatique impossible',e);}
+  S.hist=[];upHdrTitle();AS.ready=true;upSaveSt();
 }
 init();
 // anime le repère de sélection (élément ou gaine)

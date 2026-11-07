@@ -1,7 +1,7 @@
 # PlanÉlec
 
 Outil de planification électrique résidentielle : un seul fichier HTML, 100 % local, sans dépendance externe.
-Le projet se sauvegarde dans un fichier JSON local et peut être rechargé.
+Le projet se sauvegarde automatiquement (navigateur, et fichier JSON local s'il y en a un ouvert) et peut être rechargé.
 Disponible ici : https://vassily-fr.github.io/plan-elec/plan-electrique.html
 
 ---
@@ -60,8 +60,22 @@ Un projet d'exemple est fourni : `test-3-circuits.json` (3 circuits, interrupteu
 7. **Renseigner les hauteurs** : clic droit, puis « 📏 Hauteur » (valeurs par défaut fournies).
 8. **Consulter le bilan** : onglet « Bilan » pour les quantités, les mécaniques et les longueurs de câbles.
 9. **Ajouter des étages** : bouton « ＋ » dans l'en-tête.
-10. **Imprimer** : bouton « 🖨 Impression » (plan et check-list).
-11. **Sauvegarder** : « 💾 Sauvegarder » ou Ctrl/⌘+S.
+10. **Imprimer** : bouton « 🖨 Impression » (plans et/ou check-list, un ou tous les étages).
+11. **Sauvegarder** : automatique (voir ci-dessous) ; « 💾 Sauvegarder » ou Ctrl/⌘+S pour écrire le fichier JSON.
+
+### Sauvegarde automatique
+
+- Chaque modification est enregistrée environ 1 s plus tard dans le navigateur (IndexedDB), et le dernier projet est rechargé à la prochaine ouverture de la page.
+- Si le projet vient d'un fichier JSON (ouvert ou sauvegardé via 💾), ce fichier est aussi réécrit automatiquement, dès que le navigateur a donné l'accord d'écriture. Après un rechargement de la page, Chrome redemande cet accord : un clic sur 💾 suffit, l'écriture redevient ensuite automatique.
+- L'indicateur à droite de l'en-tête montre l'état : « ● enregistrement… », « ✓ auto HH:MM » (navigateur), « ✓ fichier.json · HH:MM », ou « fichier à mettre à jour (Ctrl+S) ».
+- La sauvegarde navigateur dépend du site (une copie par adresse) et ne remplace pas un fichier JSON pour archiver ou changer d'ordinateur.
+- **📄 Nouveau** repart d'un projet vide.
+
+### Renommer
+
+- **Éléments** : double-clic sur l'élément, clic droit puis « ✏ Renommer », ou double-clic sur son nom dans la liste de l'onglet Circuits. Vide = nom par défaut. Le nom s'affiche sous le picto, dans les infobulles, la liste des circuits et la check-list.
+- **Étages** : double-clic sur l'onglet de l'étage.
+- **Circuits** : champ de nom de la carte du circuit (onglet Circuits).
 
 ### Navigation dans le plan
 
@@ -87,6 +101,7 @@ Le zoom et le déplacement ne sont pas sauvegardés.
 ### Clic droit sur un élément
 
 - 🔄 Pivoter de 45°
+- ✏ Renommer (aussi par double-clic sur l'élément)
 - 📋 Dupliquer
 - 🔗 Relier (interrupteurs et inter. volets)
 - ✂ Délier : retire **toutes** les liaisons de l'élément en un clic
@@ -128,17 +143,21 @@ Le bouton **🖨 Impression** passe en aperçu papier, inspiré des plans d'arch
 - Cadre, légende (symboles présents avec leur nombre, liste des circuits) et cartouche : projet, étage, date, échelle ≈ 1:N, barre d'échelle.
 - Formats A4 / A3, paysage / portrait.
 
-### Sélecteur Plan / Check-list
+### Choix des pages
 
-Il choisit seulement la page affichée dans l'aperçu ; ◀ ▶ fait défiler les pages de la check-list.
-**🖨 Imprimer envoie toujours toutes les pages** : le plan, puis toute la check-list. On choisit les pages dans la fenêtre d'impression du système.
+- **Contenu** : « Plans + check-list », « Plans seuls » ou « Check-list seule ».
+- **Étages** : « Tous les étages » (ceux qui ont un plan ou des éléments) ou l'étage courant. Le sélecteur n'apparaît que s'il y a plusieurs étages.
+- Les pages sortent étage par étage : le plan de l'étage, puis sa check-list.
+- L'aperçu s'ouvre sur l'étage affiché ; ◀ ▶ parcourt toutes les pages (numéro et étage affichés).
+- **🖨 Imprimer sort exactement les pages de l'aperçu.**
 
 ### Technique
 
 - Le rendu ne dépend pas de la résolution : la page est définie en mm, et `k` vaut le nombre de px par mm.
-  - `drawSheet(g, k, o)` dessine le plan.
-  - `drawChecklist(g, k, o, page, pages)` dessine une page de check-list.
-  - `printPages(o, all)` liste les pages à produire.
+  - `drawSheet(g, k, o, lvl)` dessine le plan d'un étage.
+  - `drawChecklist(g, k, o, page, pages, lvl)` dessine une page de check-list d'un étage.
+  - `printPages(o)` liste les pages à produire (`{l, kind, draw}`), selon `o.what` et `o.lvls`.
+  - Avant l'impression, `loadPlanImg()` attend le chargement des plans des étages non encore affichés.
 - À l'impression, chaque page est rendue hors écran à k = 8 (≈ 200 dpi), convertie en PNG et placée dans `#printOut`. Une règle `@page` est injectée avec le bon format et la bonne orientation, puis `window.print()` est appelé.
 - Les options sont sauvegardées dans le projet (`cfg.print`) et fusionnées avec les valeurs par défaut `PDEF` par `pc()`.
 
@@ -148,10 +167,11 @@ Il choisit seulement la page affichée dans l'aperçu ; ◀ ▶ fait défiler le
 
 Elle est faite pour être imprimée et cochée au crayon sur le chantier, avec des gants et sans ordinateur. On voit d'un coup d'œil ce qui reste à faire.
 
-- **Une ligne par point** : prise, interrupteur, lumière, volet, prise réseau. Les lignes sont groupées par circuit, puis viennent les points « Sans circuit ».
+- **Une check-list par étage** : l'en-tête affiche le nom de l'étage en cartouche noir, repris dans le pied de page. Les repères (P1, I2…) sont numérotés par étage, comme sur le plan de cet étage.
+- **Une ligne par point** : prise, interrupteur, lumière, volet, prise réseau. Dans l'étage, les lignes sont groupées par circuit, puis viennent les points « Sans circuit ».
 - **Colonnes** :
   - Repère (picto et numéro, identiques au plan) ;
-  - Point (type, mécaniques) ;
+  - Point (nom personnalisé en gras s'il existe, puis type et mécaniques) ;
   - Circuit ;
   - **H (cm)** : hauteur de pose, pour retrouver les boîtes à la scie cloche ;
   - 7 cases à cocher ;
@@ -283,7 +303,7 @@ S = {
 }
 ```
 
-Champs facultatifs d'un élément : `h` (hauteur en cm), `links`, `meca1` / `meca2`.
+Champs facultatifs d'un élément : `name` (nom personnalisé), `h` (hauteur en cm), `links`, `meca1` / `meca2`.
 Les anciens formats (v2 à v4) restent chargeables.
 
 > ⚠️ Les images sont stockées en base64 dans le JSON : le fichier pèse environ 1,3 à 5 fois l'image d'origine.
@@ -356,11 +376,13 @@ Hauteurs usuelles : prises à 30 cm (5 cm minimum), commandes entre 90 et 130 cm
 - [x] Volets roulants / battants, prise double, prise réseau, applique
 - [x] Impression du plan d'électricien et check-list de chantier (PDF possible via la fenêtre d'impression)
 - [x] Hauteur de pose par élément
+- [x] Sauvegarde automatique (navigateur + fichier JSON ouvert)
+- [x] Noms personnalisés des éléments (ex. « Prise cuisine droite »), repris à l'écran et sur la check-list
+- [x] Impression au choix : plans, check-list ou les deux, un étage ou tous ; check-list par étage
 
 ### Priorité moyenne
 
 - [ ] Rétablir (Ctrl+Y)
-- [ ] Étiquettes personnalisées (ex. « Prise cuisine droite »), reprises sur le plan et la check-list
 - [ ] Check-list cochable aussi dans l'appli (suivi de l'avancement sauvegardé)
 - [ ] Bilan imprimable (liste d'achat)
 - [ ] Prise 32A (cuisson), spots encastrés
