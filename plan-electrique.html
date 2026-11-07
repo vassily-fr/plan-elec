@@ -234,6 +234,11 @@
       <div class="ei"><svg viewBox="0 0 26 26" width="26" height="26"><rect x="3" y="3" width="20" height="20" rx="2" fill="none" stroke="#34d399" stroke-width="1.5"/><rect x="7" y="8" width="12" height="8" rx="1" fill="none" stroke="#34d399" stroke-width="1.2"/><line x1="9" y1="10" x2="9" y2="16" stroke="#34d399" stroke-width="0.9"/><line x1="11" y1="10" x2="11" y2="16" stroke="#34d399" stroke-width="0.9"/><line x1="13" y1="10" x2="13" y2="16" stroke="#34d399" stroke-width="0.9"/><line x1="15" y1="10" x2="15" y2="16" stroke="#34d399" stroke-width="0.9"/><line x1="17" y1="10" x2="17" y2="16" stroke="#34d399" stroke-width="0.9"/><text x="13" y="24" text-anchor="middle" font-size="4.5" fill="#34d399" font-family="sans-serif" font-weight="bold">NET</text></svg></div>Prise réseau
     </div>
   </div>
+  <div class="ts"><h3>Audio</h3>
+    <div class="eb" draggable="true" data-type="hp_pair" title="Pose une paire liée : prise côté ampli + prise côté enceinte">
+      <div class="ei"><svg viewBox="0 0 26 26" width="26" height="26"><rect x="2" y="3" width="22" height="20" rx="2" fill="none" stroke="#f472b6" stroke-width="1.5"/><path d="M7 10.5h3l4-3.5v12l-4-3.5H7z" fill="none" stroke="#f472b6" stroke-width="1.3" stroke-linejoin="round"/><path d="M17 10q2 3 0 6M19.5 8q3.5 5 0 10" fill="none" stroke="#f472b6" stroke-width="1.2" stroke-linecap="round"/></svg></div>Prise HP (paire)
+    </div>
+  </div>
   <div class="ts"><h3>Infrastructure</h3>
     <div class="eb" draggable="true" data-type="tableau">
       <div class="ei"><svg viewBox="0 0 26 26" width="26" height="26"><rect x="2" y="3" width="22" height="20" rx="2" fill="none" stroke="#ff6b6b" stroke-width="1.5"/><line x1="2" y1="9" x2="24" y2="9" stroke="#ff6b6b" stroke-width="1"/><rect x="5" y="12" width="4" height="7" rx="1" fill="#ff6b6b" opacity=".5"/><rect x="11" y="12" width="4" height="7" rx="1" fill="#ff6b6b" opacity=".3"/><rect x="17" y="12" width="4" height="7" rx="1" fill="#ff6b6b" opacity=".2"/></svg></div>Tableau élec
@@ -331,7 +336,13 @@ const T={
   volet_battant:{label:'Volet battant',color:'#818cf8',cat:'volet',amp:10,sec:'1.5mm²'},
   inter_volet:{label:'Inter. volet',color:'#fb923c',cat:'inter_volet',amp:10,sec:'1.5mm²'},
   prise_rj45:{label:'Prise réseau',color:'#34d399',cat:'reseau',amp:0,sec:'-'},
+  // prises haut-parleur : toujours par paire (côté ampli → côté enceinte), reliées par un câble HP
+  hp_ampli:{label:'Prise HP ampli',color:'#f472b6',cat:'audio',amp:0,sec:'câble HP'},
+  hp_enceinte:{label:'Prise HP enceinte',color:'#f472b6',cat:'audio',amp:0,sec:'câble HP'},
 };
+// éléments hors circuit électrique (pas de disjoncteur)
+const noCirc=t=>t==='tableau'||T[t]?.cat==='audio';
+const isHp=t=>T[t]?.cat==='audio';
 // ═══════ STATE ═══════
 const S={
   lvls:[],curLvl:0,scale:null,
@@ -470,8 +481,10 @@ function setupTB(){
     e.preventDefault();
     if(e.dataTransfer.files.length>0){const f=e.dataTransfer.files[0];if(f.type.startsWith('image/'))loadImg(f);return;}
     if(S.printMode)return;
-    const type=e.dataTransfer.getData('text/plain');if(!T[type])return;
-    const r=cv.getBoundingClientRect();placeEl(type,e.clientX-r.left,e.clientY-r.top);
+    const type=e.dataTransfer.getData('text/plain'),r=cv.getBoundingClientRect();
+    if(type==='hp_pair'){placeHpPair(e.clientX-r.left,e.clientY-r.top);return;}
+    if(!T[type])return;
+    placeEl(type,e.clientX-r.left,e.clientY-r.top);
   });
   document.getElementById('tSel').onclick=()=>setTool('select');
   document.getElementById('tLine').onclick=()=>setTool('line');
@@ -499,7 +512,8 @@ function setupCV(){
       const ci=S.assgn[el.id];const cn=ci?S.circs.find(c=>c.id===ci):null;
       const g=linkGroup(el).filter(o=>o!==el),gs=g.filter(o=>isSw(o.type)),gl=g.filter(o=>!isSw(o.type));
       let lt='';
-      if(isSw(el.type)){if(gl.length)lt+=' · Commande : '+gl.map(elLabel).join(', ');if(gs.length)lt+=' · Va-et-vient avec : '+gs.map(elLabel).join(', ');}
+      if(isHp(el.type)){lt=g.length?' · Relié à : '+g.map(elLabel).join(', '):' · ⚠ sans prise '+(el.type==='hp_ampli'?'côté enceinte':'côté ampli');}
+      else if(isSw(el.type)){if(gl.length)lt+=' · Commande : '+gl.map(elLabel).join(', ');if(gs.length)lt+=' · Va-et-vient avec : '+gs.map(elLabel).join(', ');}
       else if(gs.length)lt=' · Commandé par : '+gs.map(elLabel).join(', ');
       tip.textContent=elLabel(el)+(el.name?' ('+T[el.type].label+')':'')+(elH(el)!=null?' · h '+elH(el)+' cm':'')+' · '+T[el.type].sec+(cn?' · Circuit: '+cn.name:'')+lt;
     } else tip.style.display='none';
@@ -550,7 +564,7 @@ function setupCV(){
       document.getElementById('ctxUnlink').style.display=linkedEls(el).length?'':'none';
       const ch=document.getElementById('ctxH');ch.style.display=hasH(el.type)?'':'none';
       ch.textContent=`📏 Hauteur : ${elH(el)!=null?elH(el)+' cm':'—'}${el.h!=null?'':' (défaut)'}`;
-      fillCtxCirc(el.type==='tableau'?null:String(S.assgn[el.id]||''),v=>{if(v)S.assgn[el.id]=v;else delete S.assgn[el.id];});
+      fillCtxCirc(noCirc(el.type)?null:String(S.assgn[el.id]||''),v=>{if(v)S.assgn[el.id]=v;else delete S.assgn[el.id];});
       cl.textContent='🔗 Relier / tracer';
       document.getElementById('ctxWireDel').style.display='none';
       showCtx(e.clientX,e.clientY);
@@ -582,12 +596,33 @@ function elAt(cx,cy){const xf=imgXf(lvl());const els=lvl().els;for(let i=els.len
 function ptSegDist(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay;const t=dx*dx+dy*dy;if(t===0)return Math.sqrt((px-ax)**2+(py-ay)**2);const u=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/t));return Math.sqrt((px-ax-u*dx)**2+(py-ay-u*dy)**2);}
 function wireAt(cx,cy){const xf=imgXf(lvl());const wires=lvl().wires;for(let i=wires.length-1;i>=0;i--){const pts=wires[i].pts||wires[i];const cp=pts.map(p=>w2c(xf,p.x,p.y));for(let j=1;j<cp.length;j++){if(ptSegDist(cx,cy,cp[j-1].x,cp[j-1].y,cp[j].x,cp[j].y)<=8)return i;}}return -1;}
 function placeEl(type,cx,cy){pushHistory();const xf=imgXf(lvl());const {x,y}=c2w(xf,cx,cy);const el={id:Date.now()+Math.random(),type,x,y,rot:0};lvl().els.push(el);render();upPanels();}
+// Prise HP : la paire est posée d'un coup, côté ampli au point de dépôt, côté enceinte à côté, déjà reliées
+function placeHpPair(cx,cy){
+  pushHistory();const xf=imgXf(lvl()),a=c2w(xf,cx,cy),b=c2w(xf,cx+70,cy);
+  const id=Date.now()+Math.random();
+  const amp={id,type:'hp_ampli',x:a.x,y:a.y,rot:0,links:[{id:id+.5,pts:[]}]},enc={id:id+.5,type:'hp_enceinte',x:b.x,y:b.y,rot:0};
+  lvl().els.push(amp,enc);S.selEl=enc;S.selWire=-1;
+  const h=document.getElementById('fhK');
+  h.textContent='🔊 Paire posée : déplacez la prise côté enceinte à son emplacement (clic droit → 🔗 pour retracer le câble)';h.style.display='block';
+  clearTimeout(h._t);h._t=setTimeout(()=>{if(!S.linkFrom)h.style.display='none';},4000);
+  render();upPanels();
+}
+// prise HP sans prise de l'autre côté sur son étage
+function hpOrphans(){
+  const out=[];
+  S.lvls.forEach(lv=>lv.els.filter(e=>isHp(e.type)).forEach(e=>{
+    const other=lv.els.filter(o=>o!==e&&isHp(o.type)&&o.type!==e.type&&(lkIds(e).includes(o.id)||lkIds(o).includes(e.id)));
+    if(!other.length)out.push(e);
+  }));
+  return out;
+}
 function delEl(el){pushHistory();const l=lvl();l.els=l.els.filter(e=>e.id!==el.id);S.lvls.forEach(lv=>lv.els.forEach(e=>{if(e.links)e.links=e.links.filter(k=>k.id!==el.id);}));if(S.linkFrom===el)endLink(true);delete S.assgn[el.id];S.selEl=null;render();upPanels();}
 
 // ═══════ LIAISONS INTER ↔ LUMIÈRES / VOLETS ═══════
 // Une liaison est portée par un élément : el.links=[{id,pts}], où pts est le chemin tracé à la souris
 // (points intermédiaires, coordonnées monde) depuis cet élément vers l'élément relié ; pts vide = ligne droite.
-const SW_LOADS={inter_simple:['luminaire','applique'],inter_double:['luminaire','applique'],inter_volet:['volet_roulant','volet_battant']};
+// la prise HP côté ampli « porte » le câble vers la (ou les) prise(s) côté enceinte, comme un inter porte sa liaison
+const SW_LOADS={inter_simple:['luminaire','applique'],inter_double:['luminaire','applique'],inter_volet:['volet_roulant','volet_battant'],hp_ampli:['hp_enceinte']};
 const isSw=t=>!!SW_LOADS[t];
 const isLoad=t=>Object.values(SW_LOADS).some(a=>a.includes(t));
 // Famille éclairage ou volets : tout élément peut être relié à un autre de la même famille
@@ -635,13 +670,14 @@ function unlinkAll(el){
 }
 function linkLen(a,b,pts){const r=[a,...pts,b];let d=0;for(let i=1;i<r.length;i++)d+=Math.hypot(r[i].x-r[i-1].x,r[i].y-r[i-1].y);return d;}
 // longueur (pixels monde) des liaisons tracées, tous étages
-function linkPx(){let px=0;S.lvls.forEach(lv=>lv.els.forEach(a=>(a.links||[]).forEach(k=>{const b=lv.els.find(e=>e.id===k.id);if(b)px+=linkLen(a,b,k.pts);})));return px;}
+// audio : true = câbles HP seuls, false = liaisons de commande seules, undefined = tout
+function linkPx(audio){let px=0;S.lvls.forEach(lv=>lv.els.forEach(a=>{if(audio!==undefined&&isHp(a.type)!==audio)return;(a.links||[]).forEach(k=>{const b=lv.els.find(e=>e.id===k.id);if(b)px+=linkLen(a,b,k.pts);});}));return px;}
 // fichiers antérieurs : links=[id,...] → [{id,pts:[]}]
 function normLinks(lvls){lvls.forEach(lv=>lv.els.forEach(e=>{if(Array.isArray(e.links))e.links=e.links.map(k=>k&&typeof k==='object'?{id:k.id,pts:Array.isArray(k.pts)?k.pts:[]}:{id:k,pts:[]});else delete e.links;}));}
 function startLink(el){
   setTool('select');S.linkFrom=el;S.linkPts=[];S.selEl=el;S.selWire=-1;
   const h=document.getElementById('fhK');
-  h.textContent=`Liaison : posez des points ou glissez pour tracer, puis cliquez l'élément suivant (${el.type==='inter_volet'||fam(el.type)==='volet_roulant'?'volet, inter. volet':'lumière, interrupteur'}) — le tracé repart de lui · clic direct = ligne droite · clic droit = retirer le dernier point · Échap = terminer`;
+  h.textContent=`Liaison : posez des points ou glissez pour tracer, puis cliquez l'élément suivant (${isHp(el.type)?'prise HP de l\'autre côté':el.type==='inter_volet'||fam(el.type)==='volet_roulant'?'volet, inter. volet':'lumière, interrupteur'}) — le tracé repart de lui · clic direct = ligne droite · clic droit = retirer le dernier point · Échap = terminer`;
   h.style.display='block';render();selHighlight();
 }
 // Met en avant un réseau sur le plan (null = aucun)
@@ -770,6 +806,14 @@ function drawEl(type,x,y,rot,sel,circColor,meca1,meca2,name){
       ctx.globalAlpha=0.45;
       ctx.beginPath();ctx.moveTo(-4,1);ctx.lineTo(0,7);ctx.lineTo(4,1);ctx.closePath();ctx.fill();
       ctx.globalAlpha=1;
+      break;
+    case 'hp_ampli':case 'hp_enceinte':
+      // plaque, haut-parleur, ondes ; lettre A (ampli) ou E (enceinte)
+      ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(-11,-11,22,22,2);ctx.stroke();
+      ctx.lineWidth=1.2;ctx.lineJoin='round';
+      ctx.beginPath();ctx.moveTo(-8,-3);ctx.lineTo(-5,-3);ctx.lineTo(-1,-7);ctx.lineTo(-1,5);ctx.lineTo(-5,1);ctx.lineTo(-8,1);ctx.closePath();ctx.stroke();
+      ctx.beginPath();ctx.arc(1,-1,4,-Math.PI/3,Math.PI/3);ctx.stroke();
+      ctx.font='bold 6px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(type==='hp_ampli'?'A':'E',6,6);ctx.textBaseline='alphabetic';
       break;
     case 'prise_rj45':
       // plaque carrée
@@ -905,11 +949,11 @@ function render(){
 // repère de circuit (C1, C2…), légende et cartouche. Ne modifie pas le projet.
 const PDEF={what:'both',lvls:'all',fmt:'A3',ori:'L',sym:4,mag:true,magD:8,plan:30,lnk:true,rep:true,wir:false,col:false};
 // Hauteur de pose (cm, axe de la boîte depuis le sol fini) : valeur saisie, sinon usage courant
-const DEFH={prise16:30,prise20:30,prise_double:30,prise_rj45:30,inter_simple:110,inter_double:110,inter_volet:110,applique:180};
+const DEFH={prise16:30,prise20:30,prise_double:30,prise_rj45:30,hp_ampli:30,hp_enceinte:30,inter_simple:110,inter_double:110,inter_volet:110,applique:180};
 const hasH=t=>t!=='luminaire'&&t!=='tableau';
 const elH=el=>el.h!=null?el.h:(DEFH[el.type]??null);
 // Repères (P1, I2, L3…) communs au plan et à la check-list, numérotés dans le sens de lecture
-const REPP={prise16:'P',prise20:'P',prise_double:'P',prise_rj45:'RJ',inter_simple:'I',inter_double:'I',inter_volet:'IV',luminaire:'L',applique:'L',volet_roulant:'V',volet_battant:'V'};
+const REPP={prise16:'P',prise20:'P',prise_double:'P',prise_rj45:'RJ',hp_ampli:'HP',hp_enceinte:'HP',inter_simple:'I',inter_double:'I',inter_volet:'IV',luminaire:'L',applique:'L',volet_roulant:'V',volet_battant:'V'};
 function repMap(l){
   const m=new Map(),n={},band=S.scale||100; // bandes d'1 m de haut, puis de gauche à droite
   l.els.filter(e=>REPP[e.type]).sort((a,b)=>Math.floor(a.y/band)-Math.floor(b.y/band)||a.x-b.x)
@@ -917,10 +961,10 @@ function repMap(l){
   return m;
 }
 const pc=()=>{const o={...PDEF,...(S.cfg.print||{})};delete o.page;if(!['both','plan','check'].includes(o.what))o.what='both';if(o.lvls!=='cur')o.lvls='all';return o;};
-const WALL=new Set(['prise16','prise_double','prise20','inter_simple','inter_double','inter_volet','prise_rj45']);
+const WALL=new Set(['prise16','prise_double','prise20','inter_simple','inter_double','inter_volet','prise_rj45','hp_ampli','hp_enceinte']);
 function paperMM(o){const[a,b]=o.fmt==='A4'?[297,210]:[420,297];return o.ori==='P'?[b,a]:[a,b];}
 // encombrement d'un symbole, en tailles de picto (sert à l'alignement)
-const symW=t=>t==='prise_double'?2.1:t==='tableau'?1.9:t==='volet_roulant'||t==='volet_battant'?1.4:1.1;
+const symW=t=>t==='prise_double'?2.1:isHp(t)?1.3:t==='tableau'?1.9:t==='volet_roulant'||t==='volet_battant'?1.4:1.1;
 function planImg(l){
   if(!l.img)return null;
   let img=bgC[l.id];
@@ -944,6 +988,8 @@ function psym(g,type,u,el){
     case 'prise20':prise(0,r);txt('20A',0,r*1.15,u*.3);break;
     case 'prise_double':[[el&&el.meca1,-u*.52],[el&&el.meca2,u*.52]].forEach(([m,ox])=>{if(m==='rj45')box(ox,u*.8,u*.6,'RJ');else if(m==='hdmi')box(ox,u*.8,u*.6,'HD');else prise(ox,r*.95);});break;
     case 'prise_rj45':box(0,u*.95,u*.7,'RJ45');break;
+    case 'hp_ampli':box(0,u*1.1,u*.7,'HP·A');break;
+    case 'hp_enceinte':box(0,u*1.1,u*.7,'HP·E');break;
     case 'inter_simple':arm(1);dot();break;
     case 'inter_double':arm(1);arm(-1);dot();break;
     case 'inter_volet':g.beginPath();g.rect(-r,-r,2*r,2*r);sf();
@@ -1068,7 +1114,8 @@ function drawSheet(g,k,o,l){
   });
   if(o.lnk&&els.some(e=>(e.links||[]).length)){
     g.save();g.beginPath();g.moveTo(tx+1*k,y+1*k);g.quadraticCurveTo(tx+5*k,y-2.5*k,tx+9*k,y+1*k);g.lineWidth=.22*k;g.setLineDash([1.6*k,1*k]);g.strokeStyle='#000';g.stroke();g.restore();
-    g.font=`500 ${2.5*k}px Syne,sans-serif`;g.textAlign='left';g.fillStyle='#000';g.fillText('Commande (inter → point)',tx+12*k,y);y+=6.2*k;
+    g.font=`500 ${2.5*k}px Syne,sans-serif`;g.textAlign='left';g.fillStyle='#000';const lk=els.filter(e=>(e.links||[]).length),hasHp=lk.some(e=>isHp(e.type)),hasCmd=lk.some(e=>!isHp(e.type));
+    g.fillText(hasCmd&&hasHp?'Commande / câble HP':hasHp?'Câble HP (ampli → enceinte)':'Commande (inter → point)',tx+12*k,y);y+=6.2*k;
   }
   // circuits présents sur l'étage
   const used=S.circs.filter(c=>els.some(e=>String(S.assgn[e.id])===String(c.id)));
@@ -1114,8 +1161,9 @@ const STEPS=[
   ['Testé','essai OK (testeur, allumage, sens du volet)'],
 ];
 // étapes sans objet : un volet n'a ni boîte ni mécanisme
-const naStep=(t,i)=>(t==='volet_roulant'||t==='volet_battant')&&(i===0||i===4);
-const REPO=['P','RJ','I','IV','L','V'];
+// prise HP : raccordée à l'ampli, pas au tableau
+const naStep=(t,i)=>((t==='volet_roulant'||t==='volet_battant')&&(i===0||i===4))||(isHp(t)&&i===5);
+const REPO=['P','RJ','HP','I','IV','L','V'];
 function checkRows(l){
   const rm=repMap(l);
   const els=l.els.filter(e=>rm.has(e)&&!S.hiddenCircs[String(S.assgn[e.id])]);
@@ -1123,7 +1171,8 @@ function checkRows(l){
   const rows=[];
   const push=(c,i,list)=>{if(!list.length)return;rows.push({head:c,i});list.sort((a,b)=>key(a)-key(b)).forEach(e=>rows.push({el:e,rep:rm.get(e)}));};
   S.circs.forEach((c,i)=>push(c,i,els.filter(e=>String(S.assgn[e.id])===String(c.id))));
-  push(null,-1,els.filter(e=>!S.circs.some(c=>String(c.id)===String(S.assgn[e.id]))));
+  push(null,-1,els.filter(e=>!isHp(e.type)&&!S.circs.some(c=>String(c.id)===String(S.assgn[e.id]))));
+  push('audio',-1,els.filter(e=>isHp(e.type)));
   return rows;
 }
 const CK={top:40,foot:12,row:8,head:7}; // mm
@@ -1175,7 +1224,14 @@ function drawChecklist(g,k,o,pi,pages,l){
   let odd=false;
   rows.forEach(r=>{
     if(r.head!==undefined){
-      const c=r.head,h=CK.head;
+      const h=CK.head;
+      if(r.head==='audio'){
+        g.fillStyle='#e4e4e4';g.fillRect(mm(M),mm(y),mm(R-M),mm(h));
+        g.fillStyle='#000';g.font=F(800,2.8);g.textAlign='left';g.fillText('HP',mm(M+1.5),mm(y+h/2));
+        g.font=F(600,2.6);g.fillText('Audio · câbles haut-parleur (ampli → enceinte, hors tableau)',mm(xs[1]+1.5),mm(y+h/2));
+        y+=h;odd=false;return;
+      }
+      const c=r.head;
       g.fillStyle='#e4e4e4';g.fillRect(mm(M),mm(y),mm(R-M),mm(h));
       g.fillStyle=o.col&&c?CC[r.i%CC.length]:'#000';g.font=F(800,2.8);g.textAlign='left';
       g.fillText(c?`C${r.i+1}`:'—',mm(M+1.5),mm(y+h/2));
@@ -1188,8 +1244,10 @@ function drawChecklist(g,k,o,pi,pages,l){
     if(odd){g.fillStyle='#f5f5f5';g.fillRect(mm(M),mm(y),mm(R-M),mm(h));}odd=!odd;
     // picto du plan pour reconnaître le point d'un coup d'œil
     g.save();g.translate(mm(xs[0]+4),mm(y+h/2));g.strokeStyle='#000';g.fillStyle='#000';g.lineWidth=mm(.22);psym(g,e.type,mm(3.6)/Math.max(1,symW(e.type)/1.3),e);g.restore();
-    g.fillStyle='#000';g.textAlign='left';g.font=F(800,3);g.fillText(r.rep,mm(xs[0]+8),mm(y+h/2));
+    g.fillStyle='#000';g.textAlign='left';g.font=F(800,3);g.fillText(r.rep,mm(xs[0]+8),mm(y+h/2),mm(cols[0][1]-9));
     let lab=t.label;if(e.type==='prise_double'){const mn={elec:'PC',rj45:'RJ45',hdmi:'HDMI'};lab+=` (${mn[e.meca1||'elec']}+${mn[e.meca2||'elec']})`;}
+    // prise HP : repère de la prise de l'autre côté du câble
+    if(isHp(e.type)){const rm=repMap(l),o=l.els.filter(x=>isHp(x.type)&&x.type!==e.type&&(lkIds(e).includes(x.id)||lkIds(x).includes(e.id))).map(x=>rm.get(x)).filter(Boolean);lab+=o.length?' → '+o.join(', '):' ⚠ sans paire';}
     if(e.name){
       g.font=F(700,2.5);g.fillText(e.name,mm(xs[1]+1.5),mm(y+h/2-1.3),mm(cols[1][1]-3));
       g.font=F(400,2);g.fillStyle='#555';g.fillText(lab,mm(xs[1]+1.5),mm(y+h/2+1.7),mm(cols[1][1]-3));g.fillStyle='#000';
@@ -1317,7 +1375,19 @@ document.getElementById('sMod').addEventListener('keydown',e=>{if(e.key==='Enter
 function setupCtx(){
   document.getElementById('ctxRen').onclick=()=>{const el=S.ctxEl;hideCtx();renameEl(el);};
   document.getElementById('ctxRot').onclick=()=>{if(S.ctxEl){pushHistory();S.ctxEl.rot=(S.ctxEl.rot+45)%360;render();}hideCtx();};
-  document.getElementById('ctxDup').onclick=()=>{if(S.ctxEl)placeEl(S.ctxEl.type,S.ctxEl.x+22,S.ctxEl.y+22);hideCtx();};
+  document.getElementById('ctxDup').onclick=()=>{
+    const el=S.ctxEl;hideCtx();if(!el)return;
+    const p=w2c(imgXf(lvl()),el.x,el.y);
+    if(el.type==='hp_ampli'){placeHpPair(p.x+22,p.y+22);return;}
+    if(el.type==='hp_enceinte'){
+      // enceinte supplémentaire (stéréo…) reliée à la même prise ampli
+      const amp=linkedEls(el).find(o=>o.type==='hp_ampli');
+      placeEl(el.type,p.x+22,p.y+22);
+      const ne=lvl().els.at(-1);if(amp){amp.links=amp.links||[];amp.links.push({id:ne.id,pts:[]});}
+      S.selEl=ne;render();upPanels();return;
+    }
+    placeEl(el.type,p.x+22,p.y+22);
+  };
   document.getElementById('ctxLink').onclick=()=>{if(S.ctxEl)startLink(S.ctxEl);hideCtx();};
   document.getElementById('ctxUnlink').onclick=()=>{if(S.ctxEl)unlinkAll(S.ctxEl);hideCtx();};
   document.getElementById('ctxH').onclick=()=>{
@@ -1373,7 +1443,7 @@ function setupPTabs(){
 
 // ═══════ BILAN ═══════
 function countAll(){const c={};Object.keys(T).forEach(k=>c[k]=0);S.lvls.forEach(l=>l.els.forEach(el=>c[el.type]++));return c;}
-function linkMtrs(){return S.scale?linkPx()/S.scale:null;}
+function linkMtrs(audio){return S.scale?linkPx(audio)/S.scale:null;}
 function wireMtrs(){let px=linkPx();S.lvls.forEach(l=>l.wires.forEach(w=>{const pts=w.pts||w;for(let i=1;i<pts.length;i++){const dx=pts[i].x-pts[i-1].x,dy=pts[i].y-pts[i-1].y;px+=Math.sqrt(dx*dx+dy*dy);}}));return S.scale?px/S.scale:null;}
 
 function upPanels(){markDirty();renderBP();if(document.getElementById('pC').style.display!=='none')renderCP();selHighlight();}
@@ -1381,10 +1451,12 @@ function upPanels(){markDirty();renderBP();if(document.getElementById('pC').styl
 function renderBP(){
   const cnt=countAll(),wm=wireMtrs(),mg=1+S.cfg.margin/100;let h='';
   // Unassigned warning
-  let unassigned=0;S.lvls.forEach(lv=>lv.els.forEach(el=>{if(el.type!=='tableau'&&!S.assgn[el.id])unassigned++;}));
+  let unassigned=0;S.lvls.forEach(lv=>lv.els.forEach(el=>{if(!noCirc(el.type)&&!S.assgn[el.id])unassigned++;}));
   if(unassigned>0)h+=`<div class="si si-ko" style="display:block">⚠ ${unassigned} élément(s) sans réseau assigné &mdash; allez dans l'onglet Circuits</div>`;
+  const orph=hpOrphans();
+  if(orph.length)h+=`<div class="si si-ko" style="display:block">⚠ ${orph.length} prise(s) HP sans prise de l'autre côté : ${orph.map(e=>esc(elLabel(e))).join(', ')} &mdash; clic droit → 🔗 Relier</div>`;
   h+=S.scale?`<div class="si si-ok" style="display:block">✓ Échelle définie : 1m = ${S.scale.toFixed(0)}px</div>`:`<div class="si si-ko" style="display:block">⚠ Échelle non définie — longueurs non calculées</div>`;
-  const grps=[{t:'Prises',k:['prise16','prise_double','prise20']},{t:'Interrupteurs',k:['inter_simple','inter_double'],tot:true},{t:'Éclairage',k:['luminaire','applique']},{t:'Volets',k:['volet_roulant','volet_battant','inter_volet']},{t:'Réseau',k:['prise_rj45']},{t:'Infrastructure',k:['tableau']}];
+  const grps=[{t:'Prises',k:['prise16','prise_double','prise20']},{t:'Interrupteurs',k:['inter_simple','inter_double'],tot:true},{t:'Éclairage',k:['luminaire','applique']},{t:'Volets',k:['volet_roulant','volet_battant','inter_volet']},{t:'Réseau',k:['prise_rj45']},{t:'Audio',k:['hp_ampli','hp_enceinte']},{t:'Infrastructure',k:['tableau']}];
   grps.forEach(g=>{const gtot=g.k.reduce((s,k)=>s+(cnt[k]||0),0);h+=`<div class="bg"><h4>${g.t}${g.tot?` <span class="cnt" style="font-size:13px">${gtot}</span>`:''}</h4>`;g.k.forEach(k=>{const n=cnt[k]||0;h+=`<div class="br"><span class="lb"><span style="color:${T[k].color}">●</span>${T[k].label}</span><span class="cnt${n===0?' z':''}">${n}</span></div>`;});h+='</div>';});
   if(cnt.prise_double>0){let mecaElec=0,mecaRj45=0,mecaHdmi=0;S.lvls.forEach(l=>l.els.filter(el=>el.type==='prise_double').forEach(el=>{const m1=el.meca1||'elec',m2=el.meca2||'elec';if(m1==='elec')mecaElec++;else if(m1==='rj45')mecaRj45++;else mecaHdmi++;if(m2==='elec')mecaElec++;else if(m2==='rj45')mecaRj45++;else mecaHdmi++;}));h+=`<div class="bg"><h4>Mécaniques <span style="color:var(--txt2);font-size:8px;font-weight:400;letter-spacing:0">prises doubles</span></h4><div class="br"><span class="lb"><span style="color:#c084fc">●</span>⚡ Électrique</span><span class="cnt${mecaElec===0?' z':''}">${mecaElec}</span></div><div class="br"><span class="lb"><span style="color:#34d399">●</span>🌐 Réseau</span><span class="cnt${mecaRj45===0?' z':''}">${mecaRj45}</span></div><div class="br"><span class="lb"><span style="color:#fb7185">●</span>📺 HDMI</span><span class="cnt${mecaHdmi===0?' z':''}">${mecaHdmi}</span></div></div>`;}
   if(S.lvls.length>1){h+='<div class="bg"><h4>Par étage</h4>';S.lvls.forEach(l=>{const n=l.els.length;h+=`<div class="br"><span class="lb">${esc(l.name)}</span><span class="cnt${n===0?' z':''}">${n} élém.</span></div>`;});h+='</div>';}
@@ -1394,9 +1466,12 @@ function renderBP(){
     const n15=(cnt.luminaire||0)+(cnt.applique||0)+(cnt.inter_simple||0)+(cnt.inter_double||0)+(cnt.volet_roulant||0)+(cnt.volet_battant||0)+(cnt.inter_volet||0);
     const n25=(cnt.prise16||0)+(cnt.prise_double||0)+(cnt.prise20||0);
     const nTot=n15+n25||1;
-    const m15=wm*mg*n15/nTot;const m25=wm*mg*n25/nTot;
+    // les câbles HP sont comptés à part (hors fils électriques)
+    const hpm=linkMtrs(true)||0,we=Math.max(0,wm-hpm);
+    const m15=we*mg*n15/nTot;const m25=we*mg*n25/nTot;
+    if(hpm>0)h+=`<div><span>Câble HP (ampli → enceintes)</span>~${(hpm*mg).toFixed(1)}m</div>`;
     if(n15>0)h+=`<div><span>Fil 1.5mm² (éclairage &amp; volets)</span>~${m15.toFixed(1)}m</div>`;
-    const lm=linkMtrs();if(lm>0)h+=`<div><span>dont liaisons inter ↔ lumières tracées</span>${lm.toFixed(1)}m</div>`;
+    const lm=linkMtrs(false);if(lm>0)h+=`<div><span>dont liaisons inter ↔ lumières tracées</span>${lm.toFixed(1)}m</div>`;
     if(n25>0)h+=`<div><span>Fil 2.5mm² (prises)</span>~${m25.toFixed(1)}m</div>`;
     h+=`<div style="font-size:9px;color:var(--txt2);margin-top:3px">Répartition proportionnelle au nombre d'éléments</div></div>`;
   } else {
@@ -1457,7 +1532,7 @@ function selHighlight(toCirc){
   if(row){row.classList.add('arow-sel');if(!toCirc)row.scrollIntoView({block:'nearest',behavior:'smooth'});}
 }
 
-function allElCnt(){let n=0;S.lvls.forEach(l=>l.els.forEach(el=>{if(el.type!=='tableau')n++;}));return n;}
+function allElCnt(){let n=0;S.lvls.forEach(l=>l.els.forEach(el=>{if(!noCirc(el.type))n++;}));return n;}
 function esc(s){return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 function renderCP(){
@@ -1534,7 +1609,7 @@ function renderCP(){
 
   // 1) Pre-compute per-type labels (stable across grouping)
   const elLabels={};const elTypeIdx={};
-  S.lvls.forEach(lv=>lv.els.filter(el=>el.type!=='tableau').forEach(el=>{
+  S.lvls.forEach(lv=>lv.els.filter(el=>!noCirc(el.type)).forEach(el=>{
     elTypeIdx[el.type]=(elTypeIdx[el.type]||0)+1;
     elLabels[el.id]=el.name||`${T[el.type].label} #${elTypeIdx[el.type]}`;
   }));
@@ -1542,7 +1617,7 @@ function renderCP(){
   // 2) Group elements by assigned circuit
   const circGroups={};S.circs.forEach(c=>circGroups[String(c.id)]=[]);
   const freeEls=[];
-  S.lvls.forEach(lv=>lv.els.filter(el=>el.type!=='tableau').forEach(el=>{
+  S.lvls.forEach(lv=>lv.els.filter(el=>!noCirc(el.type)).forEach(el=>{
     const cv=String(S.assgn[el.id]||'');
     if(cv&&circGroups[cv]!==undefined)circGroups[cv].push(el);
     else freeEls.push(el);

@@ -71,6 +71,14 @@ Un projet d'exemple est fourni : `test-3-circuits.json` (3 circuits, interrupteu
 - La sauvegarde navigateur dépend du site (une copie par adresse) et ne remplace pas un fichier JSON pour archiver ou changer d'ordinateur.
 - **📄 Nouveau** repart d'un projet vide.
 
+### Prises haut-parleur (audio)
+
+- Barre de gauche, section **Audio**, entrée « Prise HP (paire) » : un dépôt pose **deux prises déjà reliées**, la prise côté ampli au point de dépôt et la prise côté enceinte juste à côté. Il suffit de déplacer la seconde à l'emplacement de l'enceinte.
+- Le câble HP est une liaison comme celles des interrupteurs : sélectionner une prise montre le câble et sa longueur, clic droit puis « 🔗 Relier » pour le retracer.
+- **Dupliquer** une prise côté ampli pose une nouvelle paire ; dupliquer une prise côté enceinte ajoute une enceinte reliée à la même prise ampli (stéréo, multiroom).
+- Ces prises sont hors circuit électrique : pas de circuit à affecter, rien au tableau. Le bilan avertit si une prise n'a pas de prise de l'autre côté, et compte le **câble HP** à part des fils électriques.
+- Impression : symboles HP·A / HP·E, câble en arc pointillé ; sur la check-list, groupe « Audio » avec repères HP1, HP2… et le repère de la prise reliée (« → HP2 ») ; l'étape « Tableau » est sans objet.
+
 ### Renommer
 
 - **Éléments** : double-clic sur l'élément, clic droit puis « ✏ Renommer », ou double-clic sur son nom dans la liste de l'onglet Circuits. Vide = nom par défaut. Le nom s'affiche sous le picto, dans les infobulles, la liste des circuits et la check-list.
@@ -374,6 +382,7 @@ Hauteurs usuelles : prises à 30 cm (5 cm minimum), commandes entre 90 et 130 cm
 - [x] Association gaine ↔ circuit, et longueurs par circuit
 - [x] Liaisons interrupteur ↔ lumière / volet, va-et-vient
 - [x] Volets roulants / battants, prise double, prise réseau, applique
+- [x] Prises haut-parleur par paire (ampli → enceinte) avec câble HP
 - [x] Impression du plan d'électricien et check-list de chantier (PDF possible via la fenêtre d'impression)
 - [x] Hauteur de pose par élément
 - [x] Sauvegarde automatique (navigateur + fichier JSON ouvert)
