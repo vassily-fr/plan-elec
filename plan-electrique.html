@@ -141,6 +141,11 @@
 .md p{font-size:12px;color:var(--txt2);margin-bottom:12px;line-height:1.6;}
 .md input[type=number]{width:100%;background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r);color:var(--txt);padding:8px 11px;font-family:'DM Mono',monospace;font-size:14px;outline:none;margin-bottom:5px;}
 .md input:focus{border-color:var(--acc);}
+.md label{display:block;font-size:10px;color:var(--txt2);margin:9px 0 3px;text-transform:uppercase;letter-spacing:.06em;}
+.md input[type=text],.md select,.md textarea{width:100%;background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r);color:var(--txt);padding:7px 10px;font-family:inherit;font-size:13px;outline:none;}
+.md textarea{min-height:84px;resize:vertical;line-height:1.45;}
+.md select:focus,.md textarea:focus{border-color:var(--acc);}
+#bdSizeC{margin-top:5px;}
 .mbs{display:flex;gap:6px;justify-content:flex-end;margin-top:12px;}
 .bok{padding:6px 16px;background:var(--acc);color:#0f0f13;border:none;border-radius:var(--r);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
 .bok:hover{opacity:.85;}
@@ -240,6 +245,9 @@
     </div>
   </div>
   <div class="ts"><h3>Infrastructure</h3>
+    <div class="eb" draggable="true" data-type="boite_deriv" title="Boîte de dérivation : taille et notes (double-clic)">
+      <div class="ei"><svg viewBox="0 0 26 26" width="26" height="26"><rect x="5" y="5" width="16" height="16" rx="1.5" fill="none" stroke="#e2a96b" stroke-width="1.5"/><path d="M13 1v4M13 21v4M1 13h4M21 13h4" stroke="#e2a96b" stroke-width="1.5"/><circle cx="13" cy="13" r="2.6" fill="#e2a96b"/></svg></div>Boîte de dérivation
+    </div>
     <div class="eb" draggable="true" data-type="tableau">
       <div class="ei"><svg viewBox="0 0 26 26" width="26" height="26"><rect x="2" y="3" width="22" height="20" rx="2" fill="none" stroke="#ff6b6b" stroke-width="1.5"/><line x1="2" y1="9" x2="24" y2="9" stroke="#ff6b6b" stroke-width="1"/><rect x="5" y="12" width="4" height="7" rx="1" fill="#ff6b6b" opacity=".5"/><rect x="11" y="12" width="4" height="7" rx="1" fill="#ff6b6b" opacity=".3"/><rect x="17" y="12" width="4" height="7" rx="1" fill="#ff6b6b" opacity=".2"/></svg></div>Tableau élec
     </div>
@@ -298,6 +306,7 @@
 </div>
 <div id="ctx">
   <button id="ctxRen">✏ Renommer</button>
+  <button id="ctxBD">📦 Taille et notes</button>
   <button id="ctxRot">🔄 Pivoter 45°</button>
   <button id="ctxDup">📋 Dupliquer</button>
   <button id="ctxLink">🔗 Relier</button>
@@ -310,6 +319,31 @@
   <hr><button id="ctxX">Fermer</button>
 </div>
 <div id="tip"></div>
+<div class="mb" id="bdMod">
+  <div class="md">
+    <h3>📦 Boîte de dérivation</h3>
+    <label for="bdName">Nom</label>
+    <input type="text" id="bdName" placeholder="ex : dérivation couloir">
+    <label for="bdSize">Taille</label>
+    <select id="bdSize">
+      <option value="">Non précisée</option>
+      <option>Ø 67 (encastrée)</option>
+      <option>Ø 85 (encastrée)</option>
+      <option>80×80</option>
+      <option>100×100</option>
+      <option>130×130</option>
+      <option>150×100</option>
+      <option>180×140</option>
+      <option>220×170</option>
+      <option value="*">Autre…</option>
+    </select>
+    <input type="text" id="bdSizeC" placeholder="ex : 155×110×74 mm">
+    <label for="bdNotes">Notes</label>
+    <textarea id="bdNotes" placeholder="ex : arrivée C3 + C5, départs chambre 2 et SDB, dans le faux plafond"></textarea>
+    <div style="font-size:10px;color:var(--txt2);margin-top:4px">Tailles en mm. Les notes figurent sur la check-list et la légende du plan imprimé.</div>
+    <div class="mbs"><button class="bno" id="bdNo">Annuler</button><button class="bok" id="bdOk">Enregistrer</button></div>
+  </div>
+</div>
 <div class="mb" id="sMod">
   <div class="md">
     <h3>📏 Mise à l'échelle</h3>
@@ -332,6 +366,8 @@ const T={
   luminaire:{label:'Luminaire',color:'#4ecdc4',cat:'lumiere',amp:10,sec:'1.5mm²'},
   applique:{label:'Applique murale',color:'#38bdf8',cat:'lumiere',amp:10,sec:'1.5mm²'},
   tableau:{label:'Tableau',color:'#ff6b6b',cat:'tableau',amp:0,sec:'-'},
+  // boîte de dérivation : taille (el.size) et notes (el.notes), hors circuit
+  boite_deriv:{label:'Boîte de dérivation',color:'#e2a96b',cat:'deriv',amp:0,sec:'-'},
   volet_roulant:{label:'Volet roulant',color:'#a78bfa',cat:'volet',amp:10,sec:'1.5mm²'},
   volet_battant:{label:'Volet battant',color:'#818cf8',cat:'volet',amp:10,sec:'1.5mm²'},
   inter_volet:{label:'Inter. volet',color:'#fb923c',cat:'inter_volet',amp:10,sec:'1.5mm²'},
@@ -341,7 +377,9 @@ const T={
   hp_enceinte:{label:'Prise HP enceinte',color:'#f472b6',cat:'audio',amp:0,sec:'câble HP'},
 };
 // éléments hors circuit électrique (pas de disjoncteur)
-const noCirc=t=>t==='tableau'||T[t]?.cat==='audio';
+const noCirc=t=>t==='tableau'||t==='boite_deriv'||T[t]?.cat==='audio';
+const isBD=t=>t==='boite_deriv';
+const bdSize=el=>el.size?el.size+(/mm|\(/.test(el.size)?'':' mm'):'';
 const isHp=t=>T[t]?.cat==='audio';
 // ═══════ STATE ═══════
 const S={
@@ -485,6 +523,7 @@ function setupTB(){
     if(type==='hp_pair'){placeHpPair(e.clientX-r.left,e.clientY-r.top);return;}
     if(!T[type])return;
     placeEl(type,e.clientX-r.left,e.clientY-r.top);
+    if(isBD(type))editBD(lvl().els.at(-1),true);
   });
   document.getElementById('tSel').onclick=()=>setTool('select');
   document.getElementById('tLine').onclick=()=>setTool('line');
@@ -515,7 +554,8 @@ function setupCV(){
       if(isHp(el.type)){lt=g.length?' · Relié à : '+g.map(elLabel).join(', '):' · ⚠ sans prise '+(el.type==='hp_ampli'?'côté enceinte':'côté ampli');}
       else if(isSw(el.type)){if(gl.length)lt+=' · Commande : '+gl.map(elLabel).join(', ');if(gs.length)lt+=' · Va-et-vient avec : '+gs.map(elLabel).join(', ');}
       else if(gs.length)lt=' · Commandé par : '+gs.map(elLabel).join(', ');
-      tip.textContent=elLabel(el)+(el.name?' ('+T[el.type].label+')':'')+(elH(el)!=null?' · h '+elH(el)+' cm':'')+' · '+T[el.type].sec+(cn?' · Circuit: '+cn.name:'')+lt;
+      if(isBD(el.type))lt=' · '+(el.size?'taille '+bdSize(el):'taille non précisée')+(el.notes?' · '+el.notes.replace(/\s*\n\s*/g,' / '):'');
+      tip.textContent=elLabel(el)+(el.name?' ('+T[el.type].label+')':'')+(elH(el)!=null?' · h '+elH(el)+' cm':'')+(isBD(el.type)?'':' · '+T[el.type].sec)+(cn?' · Circuit: '+cn.name:'')+lt;
     } else tip.style.display='none';
     if(S.linkFrom||(S.tool==='wire'&&S.wirePs.length>0)||(S.tool==='line'&&S.linePt)||(S.tool==='scale'&&S.scaleS&&!S.scaleS.done)) render();
     const ib=document.getElementById('ib');
@@ -549,7 +589,7 @@ function setupCV(){
   cv.addEventListener('dblclick',e=>{
     if(S.printMode)return;
     if(S.tool==='wire'&&S.wirePs.length>=2){finWire();return;}
-    if(S.tool==='select'&&!S.linkFrom){const r=cv.getBoundingClientRect(),el=elAt(e.clientX-r.left,e.clientY-r.top);if(el){S.drag=null;renameEl(el);}}
+    if(S.tool==='select'&&!S.linkFrom){const r=cv.getBoundingClientRect(),el=elAt(e.clientX-r.left,e.clientY-r.top);if(el){S.drag=null;if(isBD(el.type))editBD(el);else renameEl(el);}}
   });
   cv.addEventListener('contextmenu',e=>{
     e.preventDefault();if(S.printMode)return;const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;
@@ -559,6 +599,7 @@ function setupCV(){
     if(el){
       S.ctxEl=el;S.selWire=-1;
       ['ctxRen','ctxRot','ctxDup','ctxHrEl','ctxDel'].forEach(id=>document.getElementById(id).style.display='');
+      document.getElementById('ctxBD').style.display=isBD(el.type)?'':'none';
       const cl=document.getElementById('ctxLink');
       cl.style.display=isSw(el.type)||isLoad(el.type)?'':'none';
       document.getElementById('ctxUnlink').style.display=linkedEls(el).length?'':'none';
@@ -572,7 +613,7 @@ function setupCV(){
       const wi=wireAt(x,y);
       if(wi>=0){
         S.ctxWireIdx=wi;S.selWire=wi;render();
-        ['ctxRen','ctxRot','ctxDup','ctxHrEl','ctxDel','ctxLink','ctxUnlink','ctxH'].forEach(id=>document.getElementById(id).style.display='none');
+        ['ctxRen','ctxBD','ctxRot','ctxDup','ctxHrEl','ctxDel','ctxLink','ctxUnlink','ctxH'].forEach(id=>document.getElementById(id).style.display='none');
         document.getElementById('ctxWireDel').style.display='';
         const w=lvl().wires[wi];fillCtxCirc(w.circId!=null?String(w.circId):'',v=>{w.circId=v||null;});
         showCtx(e.clientX,e.clientY);
@@ -697,6 +738,26 @@ function endLink(silent){S.linkFrom=null;S.linkPts=[];S.linkDraw=false;const h=d
 // libellé par défaut (type + numéro), puis libellé affiché : le nom donné par l'utilisateur s'il existe
 function elDefLabel(el){let n=0;for(const lv of S.lvls)for(const e of lv.els){if(e.type===el.type)n++;if(e===el)return T[el.type].label+' #'+n;}return T[el.type].label;}
 function elLabel(el){return el.name||elDefLabel(el);}
+// Boîte de dérivation : nom, taille, notes dans une seule fenêtre (fresh = vient d'être posée)
+function editBD(el,fresh){
+  const m=document.getElementById('bdMod'),nm=document.getElementById('bdName'),sz=document.getElementById('bdSize'),sc=document.getElementById('bdSizeC'),nt=document.getElementById('bdNotes');
+  const opts=[...sz.options].map(o=>o.value).filter(v=>v&&v!=='*');
+  nm.value=el.name||'';nm.placeholder=elDefLabel(el);nt.value=el.notes||'';
+  if(!el.size){sz.value='';sc.value='';}else if(opts.includes(el.size)){sz.value=el.size;sc.value='';}else{sz.value='*';sc.value=el.size;}
+  const syncC=()=>{sc.style.display=sz.value==='*'?'':'none';};syncC();sz.onchange=()=>{syncC();if(sz.value==='*')sc.focus();};
+  const close=()=>{m.classList.remove('show');m.onkeydown=null;};
+  document.getElementById('bdNo').onclick=close;
+  document.getElementById('bdOk').onclick=()=>{
+    const n=nm.value.trim(),s=(sz.value==='*'?sc.value:sz.value).trim(),t=nt.value.trim();
+    close();
+    if(n===(el.name||'')&&s===(el.size||'')&&t===(el.notes||''))return;
+    if(!fresh)pushHistory(); // posée à l'instant : le dépôt et la saisie s'annulent ensemble
+    const set=(k,v)=>{if(v)el[k]=v;else delete el[k];};set('name',n);set('size',s);set('notes',t);
+    render();upPanels();
+  };
+  m.onkeydown=e=>{if(e.key==='Escape'){e.stopPropagation();close();}else if(e.key==='Enter'&&e.target!==nt)document.getElementById('bdOk').click();};
+  m.classList.add('show');setTimeout(()=>(fresh?sz:nm).focus(),50);
+}
 function renameEl(el){
   if(!el||!T[el.type])return;
   const v=prompt(`Nom de « ${elLabel(el)} » (${T[el.type].label}).\nVide = nom par défaut (${elDefLabel(el)}).`,el.name||'');
@@ -815,6 +876,12 @@ function drawEl(type,x,y,rot,sel,circColor,meca1,meca2,name){
       ctx.beginPath();ctx.arc(1,-1,4,-Math.PI/3,Math.PI/3);ctx.stroke();
       ctx.font='bold 6px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(type==='hp_ampli'?'A':'E',6,6);ctx.textBaseline='alphabetic';
       break;
+    case 'boite_deriv':
+      // boîte carrée, 4 entrées de gaine, bornier au centre
+      ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(-9,-9,18,18,1.5);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,-13);ctx.lineTo(0,-9);ctx.moveTo(0,9);ctx.lineTo(0,13);ctx.moveTo(-13,0);ctx.lineTo(-9,0);ctx.moveTo(9,0);ctx.lineTo(13,0);ctx.stroke();
+      ctx.beginPath();ctx.arc(0,0,3,0,Math.PI*2);ctx.fill();
+      break;
     case 'prise_rj45':
       // plaque carrée
       ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(-11,-11,22,22,2);ctx.stroke();
@@ -921,7 +988,7 @@ function render(){
     ctx.fillStyle=g.col;ctx.fillText(g.txt,g.mx,g.my);ctx.restore();
   });
 
-  const drawOne=el=>{if(S.hiddenCircs[String(S.assgn[el.id])])return;const cp=w2c(xf,el.x,el.y);drawEl(el.type,cp.x,cp.y,el.rot,el===S.selEl,cmap[S.assgn[el.id]]||null,el.meca1,el.meca2,el.name);};
+  const drawOne=el=>{if(S.hiddenCircs[String(S.assgn[el.id])])return;const cp=w2c(xf,el.x,el.y);drawEl(el.type,cp.x,cp.y,el.rot,el===S.selEl,cmap[S.assgn[el.id]]||null,el.meca1,el.meca2,isBD(el.type)?(el.name||'Dérivation')+(el.size?' · '+el.size:'')+(el.notes?' ✎':''):el.name);};
   l.els.forEach(el=>{if(el!==S.selEl&&!inFc(el))drawOne(el);});
   if(S.selEl&&l.els.includes(S.selEl)&&!inFc(S.selEl))drawOne(S.selEl);
   // anneaux jaunes sur les éléments reliés ; en mode liaison, cercles pointillés sur les candidats
@@ -953,7 +1020,7 @@ const DEFH={prise16:30,prise20:30,prise_double:30,prise_rj45:30,hp_ampli:30,hp_e
 const hasH=t=>t!=='luminaire'&&t!=='tableau';
 const elH=el=>el.h!=null?el.h:(DEFH[el.type]??null);
 // Repères (P1, I2, L3…) communs au plan et à la check-list, numérotés dans le sens de lecture
-const REPP={prise16:'P',prise20:'P',prise_double:'P',prise_rj45:'RJ',hp_ampli:'HP',hp_enceinte:'HP',inter_simple:'I',inter_double:'I',inter_volet:'IV',luminaire:'L',applique:'L',volet_roulant:'V',volet_battant:'V'};
+const REPP={prise16:'P',prise20:'P',prise_double:'P',prise_rj45:'RJ',hp_ampli:'HP',hp_enceinte:'HP',inter_simple:'I',inter_double:'I',inter_volet:'IV',luminaire:'L',applique:'L',volet_roulant:'V',volet_battant:'V',boite_deriv:'BD'};
 function repMap(l){
   const m=new Map(),n={},band=S.scale||100; // bandes d'1 m de haut, puis de gauche à droite
   l.els.filter(e=>REPP[e.type]).sort((a,b)=>Math.floor(a.y/band)-Math.floor(b.y/band)||a.x-b.x)
@@ -988,6 +1055,7 @@ function psym(g,type,u,el){
     case 'prise20':prise(0,r);txt('20A',0,r*1.15,u*.3);break;
     case 'prise_double':[[el&&el.meca1,-u*.52],[el&&el.meca2,u*.52]].forEach(([m,ox])=>{if(m==='rj45')box(ox,u*.8,u*.6,'RJ');else if(m==='hdmi')box(ox,u*.8,u*.6,'HD');else prise(ox,r*.95);});break;
     case 'prise_rj45':box(0,u*.95,u*.7,'RJ45');break;
+    case 'boite_deriv':{const b=u*.36;g.beginPath();g.rect(-b,-b,2*b,2*b);sf();g.beginPath();g.moveTo(-b,-b);g.lineTo(b,b);g.moveTo(b,-b);g.lineTo(-b,b);g.stroke();break;}
     case 'hp_ampli':box(0,u*1.1,u*.7,'HP·A');break;
     case 'hp_enceinte':box(0,u*1.1,u*.7,'HP·E');break;
     case 'inter_simple':arm(1);dot();break;
@@ -1117,6 +1185,19 @@ function drawSheet(g,k,o,l){
     g.font=`500 ${2.5*k}px Syne,sans-serif`;g.textAlign='left';g.fillStyle='#000';const lk=els.filter(e=>(e.links||[]).length),hasHp=lk.some(e=>isHp(e.type)),hasCmd=lk.some(e=>!isHp(e.type));
     g.fillText(hasCmd&&hasHp?'Commande / câble HP':hasHp?'Câble HP (ampli → enceinte)':'Commande (inter → point)',tx+12*k,y);y+=6.2*k;
   }
+  // boîtes de dérivation : repère, taille, notes
+  const bds=els.filter(e=>isBD(e.type));
+  if(bds.length){
+    y+=2*k;head('DÉRIVATIONS');const rmb=repMap(l),lim=H*k-M/2-38*k-4*k;
+    bds.sort((a,b)=>(parseInt((rmb.get(a)||'').slice(2))||0)-(parseInt((rmb.get(b)||'').slice(2))||0)).forEach(e=>{
+      if(y>lim)return;
+      g.textAlign='left';g.textBaseline='middle';g.fillStyle='#000';
+      g.font=`700 ${2.5*k}px Syne,sans-serif`;const rp=o.rep?rmb.get(e):'';g.fillText(rp||'•',tx,y);
+      g.font=`500 ${2.4*k}px Syne,sans-serif`;g.fillText([e.name,bdSize(e)].filter(Boolean).join(' · ')||'Taille non précisée',tx+9*k,y,lr-tx-9*k);y+=4*k;
+      if(e.notes){g.font=`400 ${2.1*k}px Syne,sans-serif`;g.fillStyle='#444';wrapTxt(g,e.notes,lr-tx-9*k,4).forEach(s=>{if(y<=lim){g.fillText(s,tx+9*k,y);y+=3.2*k;}});}
+      y+=1.4*k;
+    });
+  }
   // circuits présents sur l'étage
   const used=S.circs.filter(c=>els.some(e=>String(S.assgn[e.id])===String(c.id)));
   if(used.length){
@@ -1149,6 +1230,13 @@ function drawSheet(g,k,o,l){
   }else g.fillText(`Format ${o.fmt} · échelle non définie`,tx,ct+23.5*k);
   g.restore();
 }
+// Coupe un texte en lignes de largeur max w (px) ; au-delà de max lignes, la dernière finit par « … »
+function wrapTxt(g,s,w,max){
+  const out=[];
+  String(s).split(/\n/).forEach(par=>{let cur='';par.split(/\s+/).filter(Boolean).forEach(word=>{const t=cur?cur+' '+word:word;if(g.measureText(t).width<=w||!cur)cur=t;else{out.push(cur);cur=word;}});out.push(cur);});
+  if(out.length>max){out.length=max;let l=out[max-1];while(l&&g.measureText(l+'…').width>w)l=l.slice(0,-1);out[max-1]=l+'…';}
+  return out;
+}
 // ── Check-list chantier ──
 // Une ligne par point (repère du plan), une case par étape : une ligne sans croix = reste à faire.
 const STEPS=[
@@ -1162,8 +1250,9 @@ const STEPS=[
 ];
 // étapes sans objet : un volet n'a ni boîte ni mécanisme
 // prise HP : raccordée à l'ampli, pas au tableau
-const naStep=(t,i)=>((t==='volet_roulant'||t==='volet_battant')&&(i===0||i===4))||(isHp(t)&&i===5);
-const REPO=['P','RJ','HP','I','IV','L','V'];
+// boîte de dérivation : ni mécanisme ni raccordement au tableau
+const naStep=(t,i)=>((t==='volet_roulant'||t==='volet_battant')&&(i===0||i===4))||(isHp(t)&&i===5)||(isBD(t)&&(i===4||i===5));
+const REPO=['P','RJ','HP','I','IV','L','V','BD'];
 function checkRows(l){
   const rm=repMap(l);
   const els=l.els.filter(e=>rm.has(e)&&!S.hiddenCircs[String(S.assgn[e.id])]);
@@ -1171,8 +1260,9 @@ function checkRows(l){
   const rows=[];
   const push=(c,i,list)=>{if(!list.length)return;rows.push({head:c,i});list.sort((a,b)=>key(a)-key(b)).forEach(e=>rows.push({el:e,rep:rm.get(e)}));};
   S.circs.forEach((c,i)=>push(c,i,els.filter(e=>String(S.assgn[e.id])===String(c.id))));
-  push(null,-1,els.filter(e=>!isHp(e.type)&&!S.circs.some(c=>String(c.id)===String(S.assgn[e.id]))));
+  push(null,-1,els.filter(e=>!isHp(e.type)&&!isBD(e.type)&&!S.circs.some(c=>String(c.id)===String(S.assgn[e.id]))));
   push('audio',-1,els.filter(e=>isHp(e.type)));
+  push('deriv',-1,els.filter(e=>isBD(e.type)));
   return rows;
 }
 const CK={top:40,foot:12,row:8,head:7}; // mm
@@ -1225,10 +1315,10 @@ function drawChecklist(g,k,o,pi,pages,l){
   rows.forEach(r=>{
     if(r.head!==undefined){
       const h=CK.head;
-      if(r.head==='audio'){
+      if(r.head==='audio'||r.head==='deriv'){
         g.fillStyle='#e4e4e4';g.fillRect(mm(M),mm(y),mm(R-M),mm(h));
-        g.fillStyle='#000';g.font=F(800,2.8);g.textAlign='left';g.fillText('HP',mm(M+1.5),mm(y+h/2));
-        g.font=F(600,2.6);g.fillText('Audio · câbles haut-parleur (ampli → enceinte, hors tableau)',mm(xs[1]+1.5),mm(y+h/2));
+        g.fillStyle='#000';g.font=F(800,2.8);g.textAlign='left';g.fillText(r.head==='audio'?'HP':'BD',mm(M+1.5),mm(y+h/2));
+        g.font=F(600,2.6);g.fillText(r.head==='audio'?'Audio · câbles haut-parleur (ampli → enceinte, hors tableau)':'Boîtes de dérivation · boîte posée, gaines arrivées, connexions faites et repérées',mm(xs[1]+1.5),mm(y+h/2));
         y+=h;odd=false;return;
       }
       const c=r.head;
@@ -1245,7 +1335,7 @@ function drawChecklist(g,k,o,pi,pages,l){
     // picto du plan pour reconnaître le point d'un coup d'œil
     g.save();g.translate(mm(xs[0]+4),mm(y+h/2));g.strokeStyle='#000';g.fillStyle='#000';g.lineWidth=mm(.22);psym(g,e.type,mm(3.6)/Math.max(1,symW(e.type)/1.3),e);g.restore();
     g.fillStyle='#000';g.textAlign='left';g.font=F(800,3);g.fillText(r.rep,mm(xs[0]+8),mm(y+h/2),mm(cols[0][1]-9));
-    let lab=t.label;if(e.type==='prise_double'){const mn={elec:'PC',rj45:'RJ45',hdmi:'HDMI'};lab+=` (${mn[e.meca1||'elec']}+${mn[e.meca2||'elec']})`;}
+    let lab=t.label;if(isBD(e.type)&&e.size)lab='Dérivation '+bdSize(e);if(e.type==='prise_double'){const mn={elec:'PC',rj45:'RJ45',hdmi:'HDMI'};lab+=` (${mn[e.meca1||'elec']}+${mn[e.meca2||'elec']})`;}
     // prise HP : repère de la prise de l'autre côté du câble
     if(isHp(e.type)){const rm=repMap(l),o=l.els.filter(x=>isHp(x.type)&&x.type!==e.type&&(lkIds(e).includes(x.id)||lkIds(x).includes(e.id))).map(x=>rm.get(x)).filter(Boolean);lab+=o.length?' → '+o.join(', '):' ⚠ sans paire';}
     if(e.name){
@@ -1256,6 +1346,9 @@ function drawChecklist(g,k,o,pi,pages,l){
     g.textAlign='center';g.font=F(600,2.4);g.fillText(ci>=0?'C'+(ci+1):'',mm(xs[2]+cols[2][1]/2),mm(y+h/2));
     const hv=hasH(e.type)?elH(e):null;g.font=F(800,3);g.fillText(hv!=null?String(hv):'',mm(xs[3]+cols[3][1]/2),mm(y+h/2));
     STEPS.forEach((_,i)=>box(xs[4+i]+sw/2,y+h/2,naStep(e.type,i)));
+    // notes saisies : dans la colonne Notes, sur 2 lignes au plus (il reste de la place pour le crayon)
+    if(e.notes){g.save();g.font=F(400,2.1);g.fillStyle='#333';g.textAlign='left';
+      const nl=wrapTxt(g,e.notes,mm(notesW-3),2);nl.forEach((s,j)=>g.fillText(s,mm(xs[4+STEPS.length]+1.5),mm(y+h/2+(j-(nl.length-1)/2)*2.6)));g.restore();}
     y+=h;
     g.strokeStyle='#ccc';g.lineWidth=mm(.15);g.beginPath();g.moveTo(mm(M),mm(y));g.lineTo(mm(R),mm(y));g.stroke();
   });
@@ -1374,6 +1467,7 @@ document.getElementById('sMod').addEventListener('keydown',e=>{if(e.key==='Enter
 // ═══════ CTX MENU ═══════
 function setupCtx(){
   document.getElementById('ctxRen').onclick=()=>{const el=S.ctxEl;hideCtx();renameEl(el);};
+  document.getElementById('ctxBD').onclick=()=>{const el=S.ctxEl;hideCtx();if(el)editBD(el);};
   document.getElementById('ctxRot').onclick=()=>{if(S.ctxEl){pushHistory();S.ctxEl.rot=(S.ctxEl.rot+45)%360;render();}hideCtx();};
   document.getElementById('ctxDup').onclick=()=>{
     const el=S.ctxEl;hideCtx();if(!el)return;
@@ -1387,6 +1481,7 @@ function setupCtx(){
       S.selEl=ne;render();upPanels();return;
     }
     placeEl(el.type,p.x+22,p.y+22);
+    if(isBD(el.type)&&el.size){lvl().els.at(-1).size=el.size;render();}
   };
   document.getElementById('ctxLink').onclick=()=>{if(S.ctxEl)startLink(S.ctxEl);hideCtx();};
   document.getElementById('ctxUnlink').onclick=()=>{if(S.ctxEl)unlinkAll(S.ctxEl);hideCtx();};
@@ -1456,9 +1551,11 @@ function renderBP(){
   const orph=hpOrphans();
   if(orph.length)h+=`<div class="si si-ko" style="display:block">⚠ ${orph.length} prise(s) HP sans prise de l'autre côté : ${orph.map(e=>esc(elLabel(e))).join(', ')} &mdash; clic droit → 🔗 Relier</div>`;
   h+=S.scale?`<div class="si si-ok" style="display:block">✓ Échelle définie : 1m = ${S.scale.toFixed(0)}px</div>`:`<div class="si si-ko" style="display:block">⚠ Échelle non définie — longueurs non calculées</div>`;
-  const grps=[{t:'Prises',k:['prise16','prise_double','prise20']},{t:'Interrupteurs',k:['inter_simple','inter_double'],tot:true},{t:'Éclairage',k:['luminaire','applique']},{t:'Volets',k:['volet_roulant','volet_battant','inter_volet']},{t:'Réseau',k:['prise_rj45']},{t:'Audio',k:['hp_ampli','hp_enceinte']},{t:'Infrastructure',k:['tableau']}];
+  const grps=[{t:'Prises',k:['prise16','prise_double','prise20']},{t:'Interrupteurs',k:['inter_simple','inter_double'],tot:true},{t:'Éclairage',k:['luminaire','applique']},{t:'Volets',k:['volet_roulant','volet_battant','inter_volet']},{t:'Réseau',k:['prise_rj45']},{t:'Audio',k:['hp_ampli','hp_enceinte']},{t:'Infrastructure',k:['tableau','boite_deriv']}];
   grps.forEach(g=>{const gtot=g.k.reduce((s,k)=>s+(cnt[k]||0),0);h+=`<div class="bg"><h4>${g.t}${g.tot?` <span class="cnt" style="font-size:13px">${gtot}</span>`:''}</h4>`;g.k.forEach(k=>{const n=cnt[k]||0;h+=`<div class="br"><span class="lb"><span style="color:${T[k].color}">●</span>${T[k].label}</span><span class="cnt${n===0?' z':''}">${n}</span></div>`;});h+='</div>';});
   if(cnt.prise_double>0){let mecaElec=0,mecaRj45=0,mecaHdmi=0;S.lvls.forEach(l=>l.els.filter(el=>el.type==='prise_double').forEach(el=>{const m1=el.meca1||'elec',m2=el.meca2||'elec';if(m1==='elec')mecaElec++;else if(m1==='rj45')mecaRj45++;else mecaHdmi++;if(m2==='elec')mecaElec++;else if(m2==='rj45')mecaRj45++;else mecaHdmi++;}));h+=`<div class="bg"><h4>Mécaniques <span style="color:var(--txt2);font-size:8px;font-weight:400;letter-spacing:0">prises doubles</span></h4><div class="br"><span class="lb"><span style="color:#c084fc">●</span>⚡ Électrique</span><span class="cnt${mecaElec===0?' z':''}">${mecaElec}</span></div><div class="br"><span class="lb"><span style="color:#34d399">●</span>🌐 Réseau</span><span class="cnt${mecaRj45===0?' z':''}">${mecaRj45}</span></div><div class="br"><span class="lb"><span style="color:#fb7185">●</span>📺 HDMI</span><span class="cnt${mecaHdmi===0?' z':''}">${mecaHdmi}</span></div></div>`;}
+  if(cnt.boite_deriv>0){const bs={};S.lvls.forEach(l=>l.els.filter(e=>isBD(e.type)).forEach(e=>{const k=e.size?bdSize(e):'Taille non précisée';bs[k]=(bs[k]||0)+1;}));
+    h+='<div class="bg"><h4>Boîtes de dérivation <span style="color:var(--txt2);font-size:8px;font-weight:400;letter-spacing:0">par taille</span></h4>';Object.keys(bs).sort().forEach(k=>{h+=`<div class="br"><span class="lb"><span style="color:${T.boite_deriv.color}">●</span>${esc(k)}</span><span class="cnt">${bs[k]}</span></div>`;});h+='</div>';}
   if(S.lvls.length>1){h+='<div class="bg"><h4>Par étage</h4>';S.lvls.forEach(l=>{const n=l.els.length;h+=`<div class="br"><span class="lb">${esc(l.name)}</span><span class="cnt${n===0?' z':''}">${n} élém.</span></div>`;});h+='</div>';}
   h+='<div class="wb"><h4>Gaines & Câbles</h4>';
   if(wm!==null){

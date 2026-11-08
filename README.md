@@ -79,6 +79,13 @@ Un projet d'exemple est fourni : `test-3-circuits.json` (3 circuits, interrupteu
 - Ces prises sont hors circuit électrique : pas de circuit à affecter, rien au tableau. Le bilan avertit si une prise n'a pas de prise de l'autre côté, et compte le **câble HP** à part des fils électriques.
 - Impression : symboles HP·A / HP·E, câble en arc pointillé ; sur la check-list, groupe « Audio » avec repères HP1, HP2… et le repère de la prise reliée (« → HP2 ») ; l'étape « Tableau » est sans objet.
 
+### Boîtes de dérivation
+
+- Barre de gauche, section **Infrastructure**, entrée « Boîte de dérivation ». Au dépôt, une fenêtre demande le nom, la **taille** (Ø 67, Ø 85, 80×80… 220×170 mm, ou « Autre… » en texte libre) et des **notes** (arrivées, départs, emplacement…).
+- Pour y revenir : double-clic sur la boîte, ou clic droit puis « 📦 Taille et notes ». La taille s'affiche sous le picto, les notes dans l'infobulle.
+- Hors circuit électrique. Le bilan les compte par taille.
+- Impression : carré barré, repères BD1, BD2… ; la légende du plan liste chaque boîte avec sa taille et ses notes ; la check-list a un groupe « Boîtes de dérivation », notes dans la colonne Notes, étapes « Méca » et « Tableau » sans objet.
+
 ### Renommer
 
 - **Éléments** : double-clic sur l'élément, clic droit puis « ✏ Renommer », ou double-clic sur son nom dans la liste de l'onglet Circuits. Vide = nom par défaut. Le nom s'affiche sous le picto, dans les infobulles, la liste des circuits et la check-list.
@@ -258,6 +265,7 @@ plan-electrique.html
 | `inter_volet` | Inter. volet | inter_volet | 10A | 1.5mm² |
 | `prise_rj45` | Prise réseau | reseau | — | — |
 | `tableau` | Tableau | tableau | — | — |
+| `boite_deriv` | Boîte de dérivation | deriv | — | — |
 
 ### État global (`S{}`)
 
@@ -383,6 +391,7 @@ Hauteurs usuelles : prises à 30 cm (5 cm minimum), commandes entre 90 et 130 cm
 - [x] Liaisons interrupteur ↔ lumière / volet, va-et-vient
 - [x] Volets roulants / battants, prise double, prise réseau, applique
 - [x] Prises haut-parleur par paire (ampli → enceinte) avec câble HP
+- [x] Boîtes de dérivation avec taille et notes
 - [x] Impression du plan d'électricien et check-list de chantier (PDF possible via la fenêtre d'impression)
 - [x] Hauteur de pose par élément
 - [x] Sauvegarde automatique (navigateur + fichier JSON ouvert)
