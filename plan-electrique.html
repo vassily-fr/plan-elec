@@ -1081,11 +1081,12 @@ function psym(g,type,u,el){
 }
 // Dessine la feuille complète sur g (origine = coin haut-gauche du papier), k = px par mm
 function drawSheet(g,k,o,l){
-  const[W,H]=paperMM(o),M=10*k,LG=66*k;
+  // CH : cartouche en bandeau horizontal en bas de feuille, sous le plan et la légende
+  const[W,H]=paperMM(o),M=10*k,LG=66*k,CH=11*k,bt=H*k-M/2-CH;
   const cmap={},cnum={},cidx={};S.circs.forEach((c,i)=>{cmap[c.id]=pcol(i);cnum[c.id]='C'+(i+1);cidx[c.id]=i;});
   g.save();g.fillStyle='#fff';g.fillRect(0,0,W*k,H*k);
   // zone du plan (à gauche de la colonne légende)
-  const ax=M,ay=M,aw=W*k-2*M-LG-4*k,ah=H*k-2*M;
+  const ax=M,ay=M,aw=W*k-2*M-LG-4*k,ah=bt-M/2-M;
   const img=planImg(l);let x0=0,y0=0,iw,ih;
   if(img){iw=img.naturalWidth;ih=img.naturalHeight;}
   else{
@@ -1178,72 +1179,85 @@ function drawSheet(g,k,o,l){
   g.strokeStyle='#000';g.lineWidth=.5*k;g.strokeRect(M/2,M/2,W*k-M,H*k-M);
   // ── colonne légende ──
   const lx=W*k-M-LG,lr=W*k-M/2-3*k;
-  g.lineWidth=.35*k;g.beginPath();g.moveTo(lx,M/2);g.lineTo(lx,H*k-M/2);g.stroke();
-  let y=M+3*k;const tx=lx+5*k;
-  const head=s=>{g.font=`800 ${3.2*k}px Syne,sans-serif`;g.fillStyle='#000';g.textAlign='left';g.textBaseline='middle';g.fillText(s,tx,y);y+=3*k;g.lineWidth=.2*k;g.beginPath();g.moveTo(tx,y);g.lineTo(lr,y);g.stroke();y+=4.5*k;};
-  head('LÉGENDE');
-  const cnt={};els.forEach(e=>cnt[e.type]=(cnt[e.type]||0)+1);
-  const lu=3.2*k;
-  Object.keys(T).filter(t=>cnt[t]).forEach(t=>{
-    g.save();g.translate(tx+5*k,y);g.strokeStyle='#000';g.fillStyle='#000';g.lineWidth=Math.max(.18*k,lu*.075);
-    psym(g,t,lu,t==='prise_double'?l.els.find(e=>e.type===t):null);g.restore();
-    g.font=`500 ${2.5*k}px Syne,sans-serif`;g.fillStyle='#000';g.textAlign='left';g.textBaseline='middle';
-    g.fillText(T[t].label,tx+12*k,y);g.textAlign='right';g.fillText('×'+cnt[t],lr,y);y+=6.2*k;
-  });
-  if(o.lnk&&els.some(e=>(e.links||[]).length)){
-    g.save();g.beginPath();g.moveTo(tx+1*k,y+1*k);g.quadraticCurveTo(tx+5*k,y-2.5*k,tx+9*k,y+1*k);g.lineWidth=.22*k;g.setLineDash([1.6*k,1*k]);g.strokeStyle='#000';g.stroke();g.restore();
-    g.font=`500 ${2.5*k}px Syne,sans-serif`;g.textAlign='left';g.fillStyle='#000';const lk=els.filter(e=>(e.links||[]).length),hasHp=lk.some(e=>isHp(e.type)),hasCmd=lk.some(e=>!isHp(e.type));
-    g.fillText(hasCmd&&hasHp?'Commande / câble HP':hasHp?'Câble HP (ampli → enceinte)':'Commande (inter → point)',tx+12*k,y);y+=6.2*k;
-  }
-  // boîtes de dérivation : repère, taille, notes
-  const bds=els.filter(e=>isBD(e.type));
-  if(bds.length){
-    y+=2*k;head('DÉRIVATIONS');const rmb=repMap(l),lim=H*k-M/2-38*k-4*k;
-    bds.sort((a,b)=>(parseInt((rmb.get(a)||'').slice(2))||0)-(parseInt((rmb.get(b)||'').slice(2))||0)).forEach(e=>{
-      if(y>lim)return;
-      g.textAlign='left';g.textBaseline='middle';g.fillStyle='#000';
-      g.font=`700 ${2.5*k}px Syne,sans-serif`;const rp=o.rep?rmb.get(e):'';g.fillText(rp||'•',tx,y);
-      g.font=`500 ${2.4*k}px Syne,sans-serif`;g.fillText([e.name,bdSize(e)].filter(Boolean).join(' · ')||'Taille non précisée',tx+9*k,y,lr-tx-9*k);y+=4*k;
-      if(e.notes){g.font=`400 ${2.1*k}px Syne,sans-serif`;g.fillStyle='#444';wrapTxt(g,e.notes,lr-tx-9*k,4).forEach(s=>{if(y<=lim){g.fillText(s,tx+9*k,y);y+=3.2*k;}});}
-      y+=1.4*k;
+  g.lineWidth=.35*k;g.beginPath();g.moveTo(lx,M/2);g.lineTo(lx,bt);g.stroke();
+  const bot=bt-3*k; // bas utile de la colonne
+  // contenu dessiné à l'échelle q (px par mm) : réduit si la colonne ne suffit pas
+  const leg=(q,lim)=>{
+    let y=M+3*q;const tx=lx+5*q;
+    const head=s=>{g.font=`800 ${3.2*q}px Syne,sans-serif`;g.fillStyle='#000';g.textAlign='left';g.textBaseline='middle';g.fillText(s,tx,y);y+=3*q;g.lineWidth=.2*q;g.beginPath();g.moveTo(tx,y);g.lineTo(lr,y);g.stroke();y+=4.5*q;};
+    head('LÉGENDE');
+    const cnt={};els.forEach(e=>cnt[e.type]=(cnt[e.type]||0)+1);
+    const lu=3.2*q;
+    Object.keys(T).filter(t=>cnt[t]).forEach(t=>{
+      g.save();g.translate(tx+5*q,y);g.strokeStyle='#000';g.fillStyle='#000';g.lineWidth=Math.max(.18*q,lu*.075);
+      psym(g,t,lu,t==='prise_double'?l.els.find(e=>e.type===t):null);g.restore();
+      g.font=`500 ${2.5*q}px Syne,sans-serif`;g.fillStyle='#000';g.textAlign='left';g.textBaseline='middle';
+      g.fillText(T[t].label,tx+12*q,y);g.textAlign='right';g.fillText('×'+cnt[t],lr,y);y+=6.2*q;
     });
-  }
-  // circuits présents sur l'étage
-  const used=S.circs.filter(c=>els.some(e=>String(S.assgn[e.id])===String(c.id)));
-  if(used.length){
-    y+=2*k;head('CIRCUITS');
-    const smp=o.col&&o.wir; // échantillon de gaine sous le nom (pointillé au-delà de 8 circuits)
-    used.forEach(c=>{
-      g.font=`700 ${2.5*k}px Syne,sans-serif`;g.textAlign='left';g.textBaseline='middle';
-      if(o.col){ // pastille pleine, numéro en blanc
-        g.fillStyle=cmap[c.id];g.beginPath();g.roundRect(tx-1*k,y-1.9*k,8*k,3.8*k,.8*k);g.fill();
-        g.fillStyle='#fff';g.textAlign='center';g.fillText(cnum[c.id],tx+3*k,y+.1*k);g.textAlign='left';
-      }else{g.fillStyle='#000';g.fillText(cnum[c.id],tx,y);}
-      g.fillStyle='#000';g.font=`500 ${2.5*k}px Syne,sans-serif`;g.fillText(c.name,tx+9*k,y,lr-tx-9*k-16*k);
-      g.fillStyle='#555';g.font=`400 ${2.1*k}px Syne,sans-serif`;g.textAlign='right';g.fillText(`${c.disj||''}A · ${c.sec||''}`,lr,y);
-      if(smp){g.save();g.strokeStyle=cmap[c.id];g.lineWidth=.45*k;g.lineCap='round';g.setLineDash(pdash(cidx[c.id],k));
-        g.beginPath();g.moveTo(tx+9*k,y+2.6*k);g.lineTo(tx+21*k,y+2.6*k);g.stroke();g.restore();}
-      y+=(smp?6.4:5.2)*k;
-    });
-  }
-  // ── cartouche ──
-  const cb=H*k-M/2,ch=38*k,ct=cb-ch;
-  g.lineWidth=.35*k;g.strokeStyle='#000';g.beginPath();g.moveTo(lx,ct);g.lineTo(W*k-M/2,ct);g.stroke();
+    if(o.lnk&&els.some(e=>(e.links||[]).length)){
+      g.save();g.beginPath();g.moveTo(tx+1*q,y+1*q);g.quadraticCurveTo(tx+5*q,y-2.5*q,tx+9*q,y+1*q);g.lineWidth=.22*q;g.setLineDash([1.6*q,1*q]);g.strokeStyle='#000';g.stroke();g.restore();
+      g.font=`500 ${2.5*q}px Syne,sans-serif`;g.textAlign='left';g.fillStyle='#000';const lk=els.filter(e=>(e.links||[]).length),hasHp=lk.some(e=>isHp(e.type)),hasCmd=lk.some(e=>!isHp(e.type));
+      g.fillText(hasCmd&&hasHp?'Commande / câble HP':hasHp?'Câble HP (ampli → enceinte)':'Commande (inter → point)',tx+12*q,y);y+=6.2*q;
+    }
+    // boîtes de dérivation : repère, taille, notes
+    const bds=els.filter(e=>isBD(e.type));
+    if(bds.length){
+      y+=2*q;head('DÉRIVATIONS');const rmb=repMap(l);
+      bds.sort((a,b)=>(parseInt((rmb.get(a)||'').slice(2))||0)-(parseInt((rmb.get(b)||'').slice(2))||0)).forEach(e=>{
+        if(y>lim)return;
+        g.textAlign='left';g.textBaseline='middle';g.fillStyle='#000';
+        g.font=`700 ${2.5*q}px Syne,sans-serif`;const rp=o.rep?rmb.get(e):'';g.fillText(rp||'•',tx,y);
+        g.font=`500 ${2.4*q}px Syne,sans-serif`;g.fillText([e.name,bdSize(e)].filter(Boolean).join(' · ')||'Taille non précisée',tx+9*q,y,lr-tx-9*q);y+=4*q;
+        if(e.notes){g.font=`400 ${2.1*q}px Syne,sans-serif`;g.fillStyle='#444';wrapTxt(g,e.notes,lr-tx-9*q,4).forEach(s=>{if(y<=lim){g.fillText(s,tx+9*q,y);y+=3.2*q;}});}
+        y+=1.4*q;
+      });
+    }
+    // circuits présents sur l'étage
+    const used=S.circs.filter(c=>els.some(e=>String(S.assgn[e.id])===String(c.id)));
+    if(used.length){
+      y+=2*q;head('CIRCUITS');
+      const smp=o.col&&o.wir; // échantillon de gaine sous le nom (pointillé au-delà de 8 circuits)
+      used.forEach(c=>{
+        if(y>lim)return;
+        g.font=`700 ${2.5*q}px Syne,sans-serif`;g.textAlign='left';g.textBaseline='middle';
+        if(o.col){ // pastille pleine, numéro en blanc
+          g.fillStyle=cmap[c.id];g.beginPath();g.roundRect(tx-1*q,y-1.9*q,8*q,3.8*q,.8*q);g.fill();
+          g.fillStyle='#fff';g.textAlign='center';g.fillText(cnum[c.id],tx+3*q,y+.1*q);g.textAlign='left';
+        }else{g.fillStyle='#000';g.fillText(cnum[c.id],tx,y);}
+        g.fillStyle='#000';g.font=`500 ${2.5*q}px Syne,sans-serif`;g.fillText(c.name,tx+9*q,y,lr-tx-9*q-16*q);
+        g.fillStyle='#555';g.font=`400 ${2.1*q}px Syne,sans-serif`;g.textAlign='right';g.fillText(`${c.disj||''}A · ${c.sec||''}`,lr,y);
+        if(smp){g.save();g.strokeStyle=cmap[c.id];g.lineWidth=.45*q;g.lineCap='round';g.setLineDash(pdash(cidx[c.id],q));
+          g.beginPath();g.moveTo(tx+9*q,y+2.6*q);g.lineTo(tx+21*q,y+2.6*q);g.stroke();g.restore();}
+        y+=(smp?6.4:5.2)*q;
+      });
+    }
+    return y;
+  };
+  // passe à blanc (invisible) pour mesurer la hauteur, puis rendu réduit au besoin (pas en dessous de 55 %)
+  g.save();g.globalAlpha=0;const need=leg(k,Infinity)-M;g.restore();
+  leg(k*Math.max(.55,Math.min(1,(bot-M)/need)),bot);
+  // ── cartouche : bandeau horizontal [titre · étage | date · échelle | barre d'échelle] ──
+  const cx0=M/2,cx1=W*k-M/2,cm=bt+CH/2,sep=x=>{g.lineWidth=.2*k;g.beginPath();g.moveTo(x,bt+1.5*k);g.lineTo(x,bt+CH-1.5*k);g.stroke();};
+  g.lineWidth=.35*k;g.strokeStyle='#000';g.beginPath();g.moveTo(cx0,bt);g.lineTo(cx1,bt);g.stroke();
   const name=S.fileHandle?S.fileHandle.name.replace(/\.json$/i,''):'Plan électrique';
-  g.textAlign='left';g.textBaseline='alphabetic';g.fillStyle='#000';
-  g.font=`800 ${4.2*k}px Syne,sans-serif`;g.fillText(name,tx,ct+7.5*k,LG-10*k);
-  g.font=`600 ${2.8*k}px Syne,sans-serif`;g.fillText('Implantation électrique · '+l.name,tx,ct+13*k,LG-10*k);
+  g.textAlign='left';g.textBaseline='middle';g.fillStyle='#000';
+  let bx=cx0+4*k;const maxT=(cx1-cx0)*.45;
+  g.font=`800 ${3.6*k}px Syne,sans-serif`;const w1=Math.min(maxT,g.measureText(name).width);g.fillText(name,bx,cm-1.9*k,maxT);
+  const sub='Implantation électrique · '+l.name;
+  g.font=`600 ${2.4*k}px Syne,sans-serif`;const w2=Math.min(maxT,g.measureText(sub).width);g.fillText(sub,bx,cm+2.3*k,maxT);
+  bx+=Math.max(w1,w2)+5*k;sep(bx);bx+=5*k;
   g.font=`400 ${2.3*k}px Syne,sans-serif`;g.fillStyle='#444';
-  g.fillText(new Date().toLocaleDateString('fr-FR'),tx,ct+18.5*k);
+  g.fillText(new Date().toLocaleDateString('fr-FR'),bx,cm-1.9*k);
   if(S.scale){
     const mmPerM=S.scale*s/k,ratio=Math.round(1000/mmPerM/5)*5;
-    g.fillText(`Échelle ≈ 1:${ratio} (format ${o.fmt})`,tx,ct+23.5*k);
-    const m=[20,10,5,2,1].find(v=>v*mmPerM<=50)||1;
-    const bl=m*mmPerM*k,by=ct+30*k;
-    for(let i=0;i<4;i++){g.fillStyle=i%2?'#fff':'#000';g.fillRect(tx+i*bl/4,by,bl/4,1.4*k);}
-    g.strokeStyle='#000';g.lineWidth=.2*k;g.strokeRect(tx,by,bl,1.4*k);
-    g.fillStyle='#000';g.font=`500 ${2*k}px Syne,sans-serif`;g.textAlign='center';g.fillText('0',tx,by+4.4*k);g.fillText(m+' m',tx+bl,by+4.4*k);
-  }else g.fillText(`Format ${o.fmt} · échelle non définie`,tx,ct+23.5*k);
+    g.fillText(`Échelle ≈ 1:${ratio} (format ${o.fmt})`,bx,cm+2.3*k);
+    const m=[20,10,5,2,1].find(v=>v*mmPerM<=40)||1;
+    const bl=m*mmPerM*k,sx=cx1-6*k-bl,by=cm-2*k;
+    sep(sx-6*k);
+    for(let i=0;i<4;i++){g.fillStyle=i%2?'#fff':'#000';g.fillRect(sx+i*bl/4,by,bl/4,1.4*k);}
+    g.strokeStyle='#000';g.lineWidth=.2*k;g.strokeRect(sx,by,bl,1.4*k);
+    g.fillStyle='#000';g.font=`500 ${2*k}px Syne,sans-serif`;g.textAlign='center';g.fillText('0',sx,by+4*k);g.fillText(m+' m',sx+bl,by+4*k);
+  }else g.fillText(`Format ${o.fmt} · échelle non définie`,bx,cm+2.3*k);
   g.restore();
 }
 // Coupe un texte en lignes de largeur max w (px) ; au-delà de max lignes, la dernière finit par « … »

@@ -154,8 +154,8 @@ Le bouton **🖨 Impression** passe en aperçu papier, inspiré des plans d'arch
 - **Aimant** : les éléments muraux proches sont regroupés, par union-find avec un seuil en mm papier réglable, puis alignés en rangée le long de leur axe principal. On obtient ainsi les « blocs » d'un vrai plan d'électricien.
 - **Commandes** : arcs pointillés entre chaque interrupteur et ce qu'il commande.
 - **Repères** : numérotation par type (P1, I3, L2, IV1, V1, RJ1…) dans l'ordre de lecture, avec la hauteur de pose.
-- Options **Gaines** (tracés des gaines) et **Couleurs** (couleur par circuit) ; étiquettes de circuit C1, C2…
-- Cadre, légende (symboles présents avec leur nombre, liste des circuits) et cartouche : projet, étage, date, échelle ≈ 1:N, barre d'échelle.
+- Options **Gaines** (tracés des gaines) et **Couleurs** : chaque circuit a sa couleur (teintes de l'écran, assombries pour le papier), un halo teinté sous ses points, des gaines colorées (en pointillé au-delà de 8 circuits), une pastille dans la légende et un liseré sur la check-list. Sans « Couleurs », tout reste en noir et blanc. Étiquettes de circuit C1, C2…
+- Cadre, légende (symboles présents avec leur nombre, dérivations, liste des circuits) dans la colonne de droite, réduite automatiquement (jusqu'à 55 %) quand elle est trop longue, et cartouche en bandeau horizontal en bas de la feuille : projet, étage, date, échelle ≈ 1:N, barre d'échelle.
 - Formats A4 / A3, paysage / portrait.
 
 ### Choix des pages
