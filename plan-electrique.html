@@ -425,6 +425,11 @@ function undo(){
   rLvlTabs();render();upPanels();
 }
 const CC=['#5b8cff','#5ddb8e','#ff9a3c','#e879f9','#f0c040','#4ecdc4','#ff85a1','#a3e635'];
+// Impression couleur : mêmes teintes que CC (C1 bleu à l'écran = bleu sur papier), assombries pour le papier blanc.
+// Au-delà de 8 circuits la couleur se répète : les gaines prennent alors un pointillé pour rester distinctes.
+const PCC=['#1d4ed8','#15803d','#c2410c','#a21caf','#a16207','#0e7490','#be123c','#4d7c0f'];
+const pcol=i=>PCC[i%PCC.length];
+const pdash=(i,k)=>i>=PCC.length*2?[.5*k,.7*k]:i>=PCC.length?[2.4*k,1*k]:[];
 const bgC={};
 // ═══════ COORDINATE HELPERS ═══════
 // Elements & wires stored in "world space" (image pixels when bg exists, else canvas pixels).
@@ -1077,7 +1082,7 @@ function psym(g,type,u,el){
 // Dessine la feuille complète sur g (origine = coin haut-gauche du papier), k = px par mm
 function drawSheet(g,k,o,l){
   const[W,H]=paperMM(o),M=10*k,LG=66*k;
-  const cmap={},cnum={};S.circs.forEach((c,i)=>{cmap[c.id]=CC[i%CC.length];cnum[c.id]='C'+(i+1);});
+  const cmap={},cnum={},cidx={};S.circs.forEach((c,i)=>{cmap[c.id]=pcol(i);cnum[c.id]='C'+(i+1);cidx[c.id]=i;});
   g.save();g.fillStyle='#fff';g.fillRect(0,0,W*k,H*k);
   // zone du plan (à gauche de la colonne légende)
   const ax=M,ay=M,aw=W*k-2*M-LG-4*k,ah=H*k-2*M;
@@ -1121,8 +1126,13 @@ function drawSheet(g,k,o,l){
   if(o.wir)l.wires.forEach(w=>{
     const cid=w.circId!=null?String(w.circId):null;if(cid&&S.hiddenCircs[cid])return;
     const cp=(w.pts||w).map(P);g.save();g.beginPath();g.moveTo(cp[0].x,cp[0].y);cp.slice(1).forEach(p=>g.lineTo(p.x,p.y));
-    g.strokeStyle=o.col&&cid&&cmap[cid]?cmap[cid]:'#888';g.globalAlpha=.8;g.lineWidth=.3*k;g.lineJoin='round';g.stroke();g.restore();
+    const cc=o.col&&cid&&cmap[cid];
+    g.strokeStyle=cc?cmap[cid]:'#888';g.globalAlpha=cc?.9:.8;g.lineWidth=(cc?.45:.3)*k;g.lineJoin='round';g.lineCap='round';
+    if(cc)g.setLineDash(pdash(cidx[cid],k));g.stroke();g.restore();
   });
+  // couleur : halo teinté sous chaque point, le circuit se lit comme une zone
+  if(o.col)els.forEach(e=>{const c=cmap[S.assgn[e.id]];if(!c)return;const p=pos.get(e);
+    g.save();g.globalAlpha=.16;g.fillStyle=c;g.beginPath();g.arc(p.x,p.y,symW(e.type)*u*.5+u*.22,0,Math.PI*2);g.fill();g.restore();});
   // commandes : arc pointillé de l'interrupteur vers ce qu'il commande
   if(o.lnk)els.forEach(a=>(a.links||[]).forEach(lk=>{
     const b=els.find(e=>e.id===lk.id);if(!b)return;
@@ -1202,12 +1212,18 @@ function drawSheet(g,k,o,l){
   const used=S.circs.filter(c=>els.some(e=>String(S.assgn[e.id])===String(c.id)));
   if(used.length){
     y+=2*k;head('CIRCUITS');
+    const smp=o.col&&o.wir; // échantillon de gaine sous le nom (pointillé au-delà de 8 circuits)
     used.forEach(c=>{
       g.font=`700 ${2.5*k}px Syne,sans-serif`;g.textAlign='left';g.textBaseline='middle';
-      g.fillStyle=o.col?cmap[c.id]:'#000';g.fillText(cnum[c.id],tx,y);
-      g.fillStyle='#000';g.font=`500 ${2.5*k}px Syne,sans-serif`;g.fillText(c.name,tx+9*k,y);
+      if(o.col){ // pastille pleine, numéro en blanc
+        g.fillStyle=cmap[c.id];g.beginPath();g.roundRect(tx-1*k,y-1.9*k,8*k,3.8*k,.8*k);g.fill();
+        g.fillStyle='#fff';g.textAlign='center';g.fillText(cnum[c.id],tx+3*k,y+.1*k);g.textAlign='left';
+      }else{g.fillStyle='#000';g.fillText(cnum[c.id],tx,y);}
+      g.fillStyle='#000';g.font=`500 ${2.5*k}px Syne,sans-serif`;g.fillText(c.name,tx+9*k,y,lr-tx-9*k-16*k);
       g.fillStyle='#555';g.font=`400 ${2.1*k}px Syne,sans-serif`;g.textAlign='right';g.fillText(`${c.disj||''}A · ${c.sec||''}`,lr,y);
-      y+=5.2*k;
+      if(smp){g.save();g.strokeStyle=cmap[c.id];g.lineWidth=.45*k;g.lineCap='round';g.setLineDash(pdash(cidx[c.id],k));
+        g.beginPath();g.moveTo(tx+9*k,y+2.6*k);g.lineTo(tx+21*k,y+2.6*k);g.stroke();g.restore();}
+      y+=(smp?6.4:5.2)*k;
     });
   }
   // ── cartouche ──
@@ -1323,7 +1339,9 @@ function drawChecklist(g,k,o,pi,pages,l){
       }
       const c=r.head;
       g.fillStyle='#e4e4e4';g.fillRect(mm(M),mm(y),mm(R-M),mm(h));
-      g.fillStyle=o.col&&c?CC[r.i%CC.length]:'#000';g.font=F(800,2.8);g.textAlign='left';
+      g.font=F(800,2.8);g.textAlign='left';
+      if(o.col&&c){g.fillStyle=pcol(r.i);g.fillRect(mm(M),mm(y),mm(cols[0][1]),mm(h));g.fillStyle='#fff';}
+      else g.fillStyle='#000';
       g.fillText(c?`C${r.i+1}`:'—',mm(M+1.5),mm(y+h/2));
       g.fillStyle='#000';g.font=F(600,2.6);
       g.fillText(c?`${c.name} · ${c.disj||''}A · ${c.sec||''}`:'Sans circuit (à affecter)',mm(xs[1]+1.5),mm(y+h/2));
@@ -1343,7 +1361,9 @@ function drawChecklist(g,k,o,pi,pages,l){
       g.font=F(400,2);g.fillStyle='#555';g.fillText(lab,mm(xs[1]+1.5),mm(y+h/2+1.7),mm(cols[1][1]-3));g.fillStyle='#000';
     }else{g.font=F(500,2.4);g.fillText(lab,mm(xs[1]+1.5),mm(y+h/2),mm(cols[1][1]-3));}
     const ci=S.circs.findIndex(c=>String(c.id)===String(S.assgn[e.id]));
-    g.textAlign='center';g.font=F(600,2.4);g.fillText(ci>=0?'C'+(ci+1):'',mm(xs[2]+cols[2][1]/2),mm(y+h/2));
+    // couleur : liseré du circuit à gauche de la ligne, numéro de circuit en couleur
+    if(o.col&&ci>=0){g.fillStyle=pcol(ci);g.fillRect(mm(M),mm(y),mm(1.2),mm(h));}
+    g.textAlign='center';g.font=F(700,2.4);g.fillStyle=o.col&&ci>=0?pcol(ci):'#000';g.fillText(ci>=0?'C'+(ci+1):'',mm(xs[2]+cols[2][1]/2),mm(y+h/2));g.fillStyle='#000';
     const hv=hasH(e.type)?elH(e):null;g.font=F(800,3);g.fillText(hv!=null?String(hv):'',mm(xs[3]+cols[3][1]/2),mm(y+h/2));
     STEPS.forEach((_,i)=>box(xs[4+i]+sw/2,y+h/2,naStep(e.type,i)));
     // notes saisies : dans la colonne Notes, sur 2 lignes au plus (il reste de la place pour le crayon)
