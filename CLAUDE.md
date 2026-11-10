@@ -25,5 +25,7 @@ Outil de plan électrique résidentiel, **un seul fichier** : `plan-electrique.h
 
 ## Documentation
 
+- Version de l'application : `APP_VERSION` en tête du script, affichée sous le titre. La monter dans le même commit que chaque changement livré (2e chiffre = fonctionnalité, 3e = correctif). Ne pas la confondre avec le format de fichier `v`.
+
 - Chaque fonctionnalité visible met à jour le README (section concernée, et « Roadmap » / « Bugs connus » si utile).
 - Format JSON : `projectData()` écrit `v:5` ; `loadData()` accepte v3 à v5 (migration v3 des gaines). Un nouveau champ doit être optionnel à la lecture (`d.x||défaut`) ; si le format change vraiment, monter `v`, ajouter la migration et garder les anciennes versions acceptées.

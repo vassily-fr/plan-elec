@@ -12,6 +12,8 @@
 #hdr{display:flex;align-items:center;gap:9px;padding:7px 13px;background:var(--surf);border-bottom:1px solid var(--brd);flex-shrink:0;z-index:50;}
 #hdr h1{font-size:16px;font-weight:800;color:var(--acc);letter-spacing:-.5px;white-space:nowrap;}
 #hdr h1 span{color:var(--txt2);font-weight:400;}
+#brand{display:flex;flex-direction:column;line-height:1;}
+#appVer{font-family:'DM Mono',monospace;font-size:8px;color:var(--txt2);margin-top:2px;letter-spacing:.3px;}
 .hs{width:1px;height:20px;background:var(--brd);}
 #body{display:flex;flex:1;overflow:hidden;}
 #tb{width:185px;background:var(--surf);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;}
@@ -179,7 +181,7 @@
 <body>
 <div id="app">
 <div id="hdr">
-  <h1>Plan<span>Élec</span></h1>
+  <div id="brand"><h1>Plan<span>Élec</span></h1><span id="appVer"></span></div>
   <div class="hs"></div>
   <div id="lvlt"></div>
   <button class="hbt" id="bAddLvl">＋</button>
@@ -356,6 +358,10 @@
 <input type="file" id="iIn" accept="image/*" style="display:none">
 <div id="printOut"></div>
 <script>
+// Version de l'application, affichée sous le titre : à monter à chaque livraison
+// (mineure = fonctionnalité, correctif = dernier chiffre). Distincte du format de fichier (projectData().v).
+const APP_VERSION='2.1.1';
+document.getElementById('appVer').textContent='v'+APP_VERSION;
 // ═══════ TYPES ═══════
 const T={
   prise16:{label:'Prise 16A',color:'#f0c040',cat:'prise',amp:16,sec:'2.5mm²'},
